@@ -222,12 +222,12 @@ describe("sit out a turn", () => {
   });
 
   it("2 players: a penalty never comes back to the player who set it up while the other sits out", () => {
-    let d = make({ a: ["AH", "9C", "8C"], b: ["AS", "2H", "KC"] }, ["5H"]);
+    let d = make({ a: ["AH", "9C", "8C"], b: ["AS", "2S", "KC"] }, ["5H"]);
     d = playCards(d, "a", ["AH"]);
     d = playCards(d, "b", ["AS"]); // a faces 2 turns
     d = sitOutTurn(d, "a"); // a sits 1 extra turn
     expect(d.turn).toBe("b");
-    d = playCards(d, "b", ["2H"]); // would be for a, who sits out -> back to b
+    d = playCards(d, "b", ["2S"]); // would be for a, who sits out -> back to b
     expect(d.turn).toBe("b");
     expect(d.pendingDraw).toBe(0);
     expect(d.sitOut.a).toBe(0);
