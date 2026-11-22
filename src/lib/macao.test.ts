@@ -302,8 +302,8 @@ describe("drawing", () => {
 });
 
 describe("Macao", () => {
-  it("only with at most two cards; caught players draw the penalty", () => {
-    let d = make({ a: ["9H", "KC"], b: ["5S", "5C", "6D"], c: ["9C", "QD"] }, ["5H"]);
+  it("only when one play can leave one card; caught players draw the penalty", () => {
+    let d = make({ a: ["9H", "KC"], b: ["5S", "7C", "6D"], c: ["9C", "QD"] }, ["5H"]);
     expect(() => sayMacao(d, "b")).toThrow(RuleError);
     d = playCards(d, "a", ["9H"]);
     expect(catchable(d, "b")).toEqual(["a"]);
