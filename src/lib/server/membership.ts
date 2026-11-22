@@ -54,7 +54,7 @@ async function tryRemove(room: RoomRow, player: PlayerRow, reason: string): Prom
   // and finishes normally when their leaving ends it (round end "last": one player left with cards).
   let finishedDeal: { deal: NonNullable<RoomRow["deal"]>; result: RoundResult } | null = null;
   if (room.status === "playing" && room.deal?.order.includes(player.id)) {
-    const next = removeFromDeal(room.deal, player.id);
+    const next = removeFromDeal(room.deal, player.id, player.nickname);
     if (next.turn !== room.deal.turn) next.turnSince = Date.now();
     if (next.order.length < MIN_PLAYERS) {
       const result: RoundResult = { aborted: { nickname: player.nickname }, standings: standings(next), winner: null };

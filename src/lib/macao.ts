@@ -138,7 +138,7 @@ export type LogEntry =
   | { type: "macao"; playerId: string }
   | { type: "caught"; playerId: string; by: string; count: number }
   | { type: "out"; playerId: string; place: number }
-  | { type: "left"; playerId: string }
+  | { type: "left"; playerId: string; nickname?: string }
   | { type: "timeout"; playerId: string };
 
 /** One deal (round) in progress. Stored as JSON on the room; hands never leave the server. */
@@ -379,9 +379,17 @@ function advance(deal: Deal, from: string) {
       continue;
     }
     deal.turn = id;
+    // Everybody else sat out and the turn came back: what this player just set up (cards to draw, a turn to sit
+    // out) would hit them, so it is dropped.
+    if (id === from) {
+      deal.pendingDraw = 0;
+      deal.pendingSkip = 0;
+    }
     return;
   }
   deal.turn = from;
+  deal.pendingDraw = 0;
+  deal.pendingSkip = 0;
 }
 
 /** Puts `cards` (same rank) down for `playerId`. `suit` = the chosen suit for a change-suit card. Input not mutated. */
@@ -475,12 +483,26 @@ export function sitOutTurn(input: Deal, playerId: string): Deal {
 export function sayMacao(input: Deal, playerId: string): Deal {
   if (!input.rules.macao) throw new RuleError("Camera se joacă fără „Macao”.");
   if (isDealOver(input) || !activePlayers(input).includes(playerId)) throw new RuleError("Nu mai joci în runda asta.");
-  if ((input.hands[playerId]?.length ?? 0) > 2) throw new RuleError("Zici „Macao” când mai ai una sau două cărți.");
+  if (!canReachOneCard(input, playerId)) throw new RuleError("Zici „Macao” când rămâi cu o carte (sau o să rămâi după mutarea asta).");
   if (input.macao[playerId]) return input;
   const deal = clone(input);
   deal.macao[playerId] = true;
   pushLog(deal, { type: "macao", playerId });
   return deal;
+}
+
+/**
+ * "Macao" can be said once one play can leave you with a single card: at most two cards, or (with several
+ * same-rank cards at once) all but one of your cards share a rank, e.g. 6♦ 6♥ 5♥. Saying it too early is
+ * harmless anyway: the flag is cleared whenever you end up holding more than one card.
+ */
+function canReachOneCard(deal: Deal, playerId: string): boolean {
+  const hand = deal.hands[playerId] ?? [];
+  if (hand.length <= 2) return true;
+  if (!deal.rules.multiPlay) return false;
+  const counts = new Map<string, number>();
+  for (const c of hand) counts.set(rankOf(c), (counts.get(rankOf(c)) ?? 0) + 1);
+  return Math.max(...counts.values()) >= hand.length - 1;
 }
 
 /** Players `by` could catch now: one card left and no "Macao" said. */
@@ -509,7 +531,7 @@ export function catchMacao(input: Deal, by: string, random: () => number = Math.
  * Their cards go under the stock; cards to draw / turns to sit out aimed at them are dropped; if it was their
  * turn it passes to the next player. The caller cancels the round when fewer than MIN_PLAYERS remain.
  */
-export function removeFromDeal(input: Deal, playerId: string): Deal {
+export function removeFromDeal(input: Deal, playerId: string, nickname?: string): Deal {
   if (!input.order.includes(playerId)) return input;
   const deal = clone(input);
   const n = deal.order.length;
@@ -523,7 +545,7 @@ export function removeFromDeal(input: Deal, playerId: string): Deal {
   delete deal.sitOut[playerId];
   delete deal.macao[playerId];
   deal.moves += 1;
-  pushLog(deal, { type: "left", playerId });
+  pushLog(deal, { type: "left", playerId, ...(nickname ? { nickname } : {}) });
   if (wasTurn && deal.order.length > 0) {
     deal.pendingDraw = 0;
     deal.pendingSkip = 0;

@@ -221,6 +221,18 @@ describe("sit out a turn", () => {
     expect(d.sitOut.c).toBe(0);
   });
 
+  it("2 players: a penalty never comes back to the player who set it up while the other sits out", () => {
+    let d = make({ a: ["AH", "9C", "8C"], b: ["AS", "2H", "KC"] }, ["5H"]);
+    d = playCards(d, "a", ["AH"]);
+    d = playCards(d, "b", ["AS"]); // a faces 2 turns
+    d = sitOutTurn(d, "a"); // a sits 1 extra turn
+    expect(d.turn).toBe("b");
+    d = playCards(d, "b", ["2H"]); // would be for a, who sits out -> back to b
+    expect(d.turn).toBe("b");
+    expect(d.pendingDraw).toBe(0);
+    expect(d.sitOut.a).toBe(0);
+  });
+
   it("no stacking when skipStack is off; the stop card cancels a skip only when allowed", () => {
     const base = { a: ["5C"], b: ["AS", "4D"], c: ["9C"] };
     const off = make(base, ["5H", "AH"], { skipStack: false, stopCancelsSkip: false }, { pendingSkip: 1, turn: "b" });
@@ -317,6 +329,17 @@ describe("Macao", () => {
     expect(catchable(d, "a")).toEqual([]);
     expect(() => catchMacao(d, "a")).toThrow(RuleError);
     expect(catchable(d, "c")).toEqual(["b"]);
+  });
+
+  it("can be said before putting down a pair from three cards", () => {
+    const d = make({ a: ["6D", "6H", "5H"], b: ["KC", "QC", "JC"] }, ["9D"]);
+    const said = sayMacao(d, "a");
+    expect(said.macao.a).toBe(true);
+    const played = playCards(said, "a", ["6D", "6H"]);
+    expect(catchable(played, "b")).toEqual([]);
+    expect(() => sayMacao(make({ a: ["6D", "7H", "5H"], b: ["KC"] }, ["9D"]), "a")).toThrow(RuleError);
+    // said too early, then only one card down: the flag is gone again
+    expect(playCards(said, "a", ["6D"]).macao.a).toBe(false);
   });
 
   it("is switched off by the rule", () => {

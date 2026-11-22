@@ -508,7 +508,7 @@ function logText(e: LogEntry, nick: (id: string) => string): string {
     case "timeout":
       return `${nick(e.playerId)} n-a mutat la timp: se joacă automat`;
     case "left":
-      return "Un jucător a ieșit din cameră; runda continuă fără el";
+      return `${e.nickname ?? "Un jucător"} a ieșit din cameră; runda continuă fără el`;
   }
 }
 
