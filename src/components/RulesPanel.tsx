@@ -154,7 +154,7 @@ export function RulesPanel({
             </Group>
           )}
 
-          <Group title="Stop" summary={rules.stopRank === "none" ? "fără" : `${rankName(rules.stopRank)}, ${rules.stopAnySuit ? "orice suită" : "aceeași suită"}`}>
+          <Group title="Stop" summary={rules.stopRank === "none" ? "fără" : `${rankName(rules.stopRank)}, ${rules.stopAnySuit ? `orice ${rankName(rules.stopRank)} oprește` : "doar de aceeași suită"}`}>
             <Choice<Rules["stopRank"]>
               testId="rule-stopRank"
               label="Cartea de stop"
@@ -169,8 +169,20 @@ export function RulesPanel({
             />
             {rules.stopRank !== "none" && (
               <>
-                <Toggle label="Stopul de orice suită oprește" hint="Altfel doar de suita cărții de sus." checked={rules.stopAnySuit} disabled={off} onChange={set("stopAnySuit")} />
-                <Toggle label="Stopul se poate pune peste orice" hint="Când nu ai de luat; altfel doar pe suită / număr." checked={rules.stopOnAnything} disabled={off} onChange={set("stopOnAnything")} />
+                <Toggle
+                  label={`Orice ${rankName(rules.stopRank)} oprește cărțile de luat`}
+                  hint={`Ex.: peste 2♥ merge și ${rankName(rules.stopRank)}♠. Nebifat: doar ${rankName(rules.stopRank)}♥ (suita cărții de sus; pe joker, culoarea lui).`}
+                  checked={rules.stopAnySuit}
+                  disabled={off}
+                  onChange={set("stopAnySuit")}
+                />
+                <Toggle
+                  label={`${rankName(rules.stopRank)} se poate pune peste orice`}
+                  hint="Când nu ai cărți de luat. Nebifat: doar pe aceeași suită sau același număr."
+                  checked={rules.stopOnAnything}
+                  disabled={off}
+                  onChange={set("stopOnAnything")}
+                />
               </>
             )}
           </Group>
