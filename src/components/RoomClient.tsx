@@ -246,7 +246,7 @@ function LeaveButton({ state, token }: { state: RoomState; token: string }) {
       : alone
       ? "Ești singur în cameră. Dacă pleci, camera se închide. Continui?"
       : room.status === "playing"
-        ? "Părăsești runda în desfășurare. Runda se anulează pentru toți. Continui?"
+        ? "Părăsești runda în desfășurare. Ceilalți continuă fără tine (în doi, runda se anulează). Continui?"
         : isHost
           ? "Ești host. Dacă pleci, următorul jucător devine host. Continui?"
           : "Sigur vrei să părăsești camera?";

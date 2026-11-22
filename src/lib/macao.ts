@@ -137,7 +137,8 @@ export type LogEntry =
   | { type: "pass"; playerId: string }
   | { type: "macao"; playerId: string }
   | { type: "caught"; playerId: string; by: string; count: number }
-  | { type: "out"; playerId: string; place: number };
+  | { type: "out"; playerId: string; place: number }
+  | { type: "left"; playerId: string };
 
 /** One deal (round) in progress. Stored as JSON on the room; hands never leave the server. */
 export interface Deal {
@@ -496,6 +497,34 @@ export function catchMacao(input: Deal, by: string, random: () => number = Math.
   for (const id of targets) {
     const got = drawCards(deal, id, deal.rules.macaoPenalty, random);
     pushLog(deal, { type: "caught", playerId: id, by, count: got.length });
+  }
+  return deal;
+}
+
+/**
+ * A player leaves the running deal (left the room or was kicked by the host): the round goes on without them.
+ * Their cards go under the stock; cards to draw / turns to sit out aimed at them are dropped; if it was their
+ * turn it passes to the next player. The caller cancels the round when fewer than MIN_PLAYERS remain.
+ */
+export function removeFromDeal(input: Deal, playerId: string): Deal {
+  if (!input.order.includes(playerId)) return input;
+  const deal = clone(input);
+  const n = deal.order.length;
+  const idx = deal.order.indexOf(playerId);
+  const prev = deal.order[(idx - 1 + n) % n];
+  const wasTurn = deal.turn === playerId;
+  deal.stock = [...(deal.hands[playerId] ?? []), ...deal.stock];
+  deal.order = deal.order.filter((id) => id !== playerId);
+  deal.finished = deal.finished.filter((id) => id !== playerId);
+  delete deal.hands[playerId];
+  delete deal.sitOut[playerId];
+  delete deal.macao[playerId];
+  deal.moves += 1;
+  pushLog(deal, { type: "left", playerId });
+  if (wasTurn && deal.order.length > 0) {
+    deal.pendingDraw = 0;
+    deal.pendingSkip = 0;
+    advance(deal, prev === playerId ? deal.order[deal.order.length - 1] : prev);
   }
   return deal;
 }

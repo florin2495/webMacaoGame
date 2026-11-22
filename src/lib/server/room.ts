@@ -214,6 +214,19 @@ export async function applyMove(
   }
   const result = dealResult(next);
   await saveRoom(room, { deal: next, status: "finished", result });
+  await recordRoundEnd(room, next, result);
+  const [state] = await Promise.all([
+    buildState({ ...room, deal: next, status: "finished", result, version }, viewer),
+    notifyRoom(room.id, "round_finished", version, viewer.id),
+  ]);
+  return state;
+}
+
+/**
+ * Bookkeeping of a finished (not aborted) round: the winner's wins +1, everyone's score += cards left, and the
+ * hub leaderboard. Players who left during the round are no longer in the room and get nothing.
+ */
+export async function recordRoundEnd(room: RoomRow, next: Deal, result: RoundResult): Promise<void> {
   const players = await listPlayers(room.id);
   for (const p of players) {
     const st = result.standings.find((x) => x.playerId === p.id);
@@ -234,11 +247,6 @@ export async function applyMove(
       players.filter((x) => next.order.includes(x.id)).map((x) => ({ nickname: x.nickname, won: result.winner === x.id })),
     );
   }
-  const [state] = await Promise.all([
-    buildState({ ...room, deal: next, status: "finished", result, version }, viewer),
-    notifyRoom(room.id, "round_finished", version, viewer.id),
-  ]);
-  return state;
 }
 
 /** Fresh state for the caller right after an action, so the client needs no follow-up /state request. */

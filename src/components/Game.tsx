@@ -151,7 +151,7 @@ export function Game({
                 const target = byId.get(id);
                 if (!target) return;
                 const msg = !finished
-                  ? `Scoți jucătorul ${target.nickname} din cameră? Are 10 secunde să refuze; dacă nu, runda se anulează pentru toți.`
+                  ? `Scoți jucătorul ${target.nickname} din cameră? Are 10 secunde să refuze; dacă nu, runda continuă fără el.`
                   : `Scoți jucătorul ${target.nickname} din cameră?`;
                 if (window.confirm(msg)) void run("kick", { playerId: id });
               }}
@@ -450,6 +450,8 @@ function logText(e: LogEntry, nick: (id: string) => string): string {
       return `${nick(e.by)} l-a prins pe ${nick(e.playerId)} fără „Macao”: ia ${cardsWord(e.count)}`;
     case "out":
       return `${nick(e.playerId)} a terminat cărțile (locul ${e.place})`;
+    case "left":
+      return "Un jucător a ieșit din cameră; runda continuă fără el";
   }
 }
 

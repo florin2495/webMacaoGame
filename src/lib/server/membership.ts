@@ -1,17 +1,17 @@
 import "server-only";
-import { standings } from "@/lib/macao";
+import { isDealOver, MIN_PLAYERS, removeFromDeal, standings } from "@/lib/macao";
 import type { RoundResult } from "@/lib/types";
 import { notifyRoom } from "./broadcast";
 import { db, PLAYER_COLUMNS, type PlayerRow, type RoomRow, T } from "./db";
-import { getRoomByCode, listPlayers } from "./room";
+import { dealResult, getRoomByCode, listPlayers, recordRoundEnd } from "./room";
 import { isKickExpired, KICK_ENFORCE_MS } from "@/lib/kick";
 
 /**
  * Removes a player from a room (used by both "leave" and the host's "kick").
  *  - last player out: the room is deleted
  *  - host removed: host passes to the next player in join order
- *  - during a deal: a card game cannot go on with a seat missing, so the round is cancelled
- *    (status finished, no winner). The host can then deal again or go back to the lobby.
+ *  - during a deal: the round goes on without them (their cards go under the stock); with fewer than two
+ *    players left it is cancelled (status finished, no winner).
  */
 export async function removePlayer(room: RoomRow, player: PlayerRow, reason: string): Promise<{ roomClosed: boolean }> {
   if (player.role === "spectator") {
@@ -38,10 +38,24 @@ export async function removePlayer(room: RoomRow, player: PlayerRow, reason: str
     version: room.version + 1,
   };
 
+  // During a deal the round goes on without the player; it is cancelled only when fewer than MIN_PLAYERS remain,
+  // and finishes normally when their leaving ends it (round end "last": one player left with cards).
+  let finishedDeal: { deal: NonNullable<RoomRow["deal"]>; result: RoundResult } | null = null;
   if (room.status === "playing" && room.deal?.order.includes(player.id)) {
-    const result: RoundResult = { aborted: { nickname: player.nickname }, standings: standings(room.deal), winner: null };
-    update.status = "finished";
-    update.result = result;
+    const next = removeFromDeal(room.deal, player.id);
+    if (next.order.length < MIN_PLAYERS) {
+      const result: RoundResult = { aborted: { nickname: player.nickname }, standings: standings(room.deal), winner: null };
+      update.status = "finished";
+      update.result = result;
+    } else if (isDealOver(next)) {
+      const result = dealResult(next);
+      update.deal = next;
+      update.status = "finished";
+      update.result = result;
+      finishedDeal = { deal: next, result };
+    } else {
+      update.deal = next;
+    }
   }
 
   // Update the room first so the host never points at a deleted player.
@@ -55,6 +69,7 @@ export async function removePlayer(room: RoomRow, player: PlayerRow, reason: str
 
   const { error: deleteError } = await db().from(T.players).delete().eq("id", player.id);
   if (deleteError) throw deleteError;
+  if (finishedDeal) await recordRoundEnd(room, finishedDeal.deal, finishedDeal.result);
 
   await notifyRoom(room.id, reason);
   return { roomClosed: false };

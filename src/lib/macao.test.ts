@@ -20,6 +20,7 @@ import {
   passTurn,
   playCards,
   playProblem,
+  removeFromDeal,
   ROOM_ABANDONED_MS,
   roundLeader,
   RuleError,
@@ -239,6 +240,14 @@ describe("several cards at once", () => {
     expect(standings(next)[0]).toEqual({ playerId: "a", place: 1, cardsLeft: 0 });
   });
 
+  it("finishing with the last three or four equal cards needs no Macao either", () => {
+    const three = playCards(make({ a: ["9H", "9S", "9C"], b: ["KC"] }, ["5H"]), "a", ["9S", "9C", "9H"]);
+    expect(three.finished).toEqual(["a"]);
+    const four = playCards(make({ a: ["9H", "9S", "9C", "9D"], b: ["KC"] }, ["5H"]), "a", ["9H", "9S", "9C", "9D"]);
+    expect(four.finished).toEqual(["a"]);
+    expect(catchable(make({ a: ["9H", "9S"], b: ["KC"] }, ["5H"]), "b")).toEqual([]);
+  });
+
   it("cannot finish with a special card when the rule forbids it", () => {
     const d = make({ a: ["2H"], b: ["KC"] }, ["5H"], { finishOnSpecial: false });
     expect(playProblem(d, "a", ["2H"])).toMatch("carte specială");
@@ -363,6 +372,39 @@ describe("end of the round", () => {
       }
       expect(isDealOver(d)).toBe(true);
     }
+  });
+});
+
+describe("a player leaves mid-round", () => {
+  it("the round goes on without them; their turn passes on and their penalty is dropped", () => {
+    let d = make({ a: ["2H", "KS"], b: ["9C", "8S"], c: ["5C"], d: ["6D"] }, ["5H"]);
+    d = playCards(d, "a", ["2H"]); // b must take 2
+    const before = totalCards(d);
+    const next = removeFromDeal(d, "b");
+    expect(next.order).toEqual(["a", "c", "d"]);
+    expect(next.turn).toBe("c");
+    expect(next.pendingDraw).toBe(0);
+    expect(next.hands.b).toBeUndefined();
+    expect(totalCards(next)).toBe(before);
+    expect(next.log.at(-1)).toEqual({ type: "left", playerId: "b" });
+  });
+
+  it("someone else leaving keeps the turn and the running penalty", () => {
+    let d = make({ a: ["2H", "KS"], b: ["9C", "8S"], c: ["5C"] }, ["5H"]);
+    d = playCards(d, "a", ["2H"]);
+    const next = removeFromDeal(d, "c");
+    expect(next.turn).toBe("b");
+    expect(next.pendingDraw).toBe(2);
+  });
+
+  it("the last seat leaving passes the turn round to the first one", () => {
+    const d = make({ a: ["KS"], b: ["9C"], c: ["5C"] }, ["5H"], {}, { turn: "c" });
+    expect(removeFromDeal(d, "c").turn).toBe("a");
+  });
+
+  it("round end 'last': the leaver can end the round", () => {
+    const d = make({ a: [], b: ["9C"], c: ["5C"] }, ["5H"], { roundEnd: "last" }, { finished: ["a"], turn: "b" });
+    expect(isDealOver(removeFromDeal(d, "c"))).toBe(true);
   });
 });
 
