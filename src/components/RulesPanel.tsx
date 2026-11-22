@@ -194,7 +194,7 @@ export function RulesPanel({
             )}
           </Group>
 
-          <Group title="Stai o tură" summary={rules.skipRank === "none" ? "fără" : `${rankName(rules.skipRank)}${rules.skipStack ? ", se adună" : ""}`}>
+          <Group title="Stai o tură" summary={rules.skipRank === "none" ? "fără" : `${rankName(rules.skipRank)}, ${rules.skipOnAnything ? "peste orice" : "doar pe culoare"}${rules.skipStack ? ", se adună" : ""}`}>
             <Choice<Rules["skipRank"]>
               testId="rule-skipRank"
               label="Cartea de stat o tură"
@@ -209,13 +209,23 @@ export function RulesPanel({
             />
             {rules.skipRank !== "none" && (
               <>
-                <Toggle label="Se poate pune peste orice" hint="Altfel doar pe aceeași culoare sau același număr." checked={rules.skipOnAnything} disabled={off} onChange={set("skipOnAnything")} />
+                <Choice<"any" | "match">
+                  testId="rule-skipOn"
+                  label={`Unde se pune ${rankName(rules.skipRank)}`}
+                  value={rules.skipOnAnything ? "any" : "match"}
+                  options={[
+                    { value: "match", label: `doar pe culoarea lui (sau pe alt ${rankName(rules.skipRank)})` },
+                    { value: "any", label: "peste orice carte (nu când ai de luat)" },
+                  ]}
+                  disabled={off}
+                  onChange={(v) => set("skipOnAnything")(v === "any")}
+                />
                 <Toggle label="Se dă mai departe (turele se adună)" hint={`Peste el pui tot ${rules.skipRank === "A" ? "As" : "4"}.`} checked={rules.skipStack} disabled={off} onChange={set("skipStack")} />
               </>
             )}
           </Group>
 
-          <Group title="Schimbă culoarea" summary={rules.changeRank === "none" ? "fără" : `${rankName(rules.changeRank)}${rules.changeOnAnything ? ", peste orice" : ""}`}>
+          <Group title="Schimbă culoarea" summary={rules.changeRank === "none" ? "fără" : `${rankName(rules.changeRank)}, ${rules.changeOnAnything ? "peste orice" : "doar pe culoare"}`}>
             <Choice<Rules["changeRank"]>
               testId="rule-changeRank"
               label="Cartea care schimbă culoarea"
@@ -229,7 +239,17 @@ export function RulesPanel({
               onChange={set("changeRank")}
             />
             {rules.changeRank !== "none" && (
-              <Toggle label="Se poate pune peste orice" hint="Niciodată când ai cărți de luat." checked={rules.changeOnAnything} disabled={off} onChange={set("changeOnAnything")} />
+              <Choice<"any" | "match">
+                testId="rule-changeOn"
+                label={`Unde se pune ${rankName(rules.changeRank)}`}
+                value={rules.changeOnAnything ? "any" : "match"}
+                options={[
+                  { value: "any", label: "peste orice carte (nu când ai de luat)" },
+                  { value: "match", label: `doar pe culoarea lui (sau pe alt ${rankName(rules.changeRank)})` },
+                ]}
+                disabled={off}
+                onChange={(v) => set("changeOnAnything")(v === "any")}
+              />
             )}
           </Group>
 

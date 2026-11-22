@@ -264,23 +264,25 @@ export function Game({
 
         {/* Deliberately low-key: nobody should be able to tell from the screen who has something to say. */}
         {r.macao && inDeal && !finished && (
-          <div className="flex justify-end gap-2">
-            {stillPlaying && (
+          <div className="flex items-center justify-between gap-2">
+            {stillPlaying ? (
               <button
                 type="button"
                 disabled={busy !== null}
                 onClick={() => void run("macao")}
-                className="min-h-8 rounded-md px-2 text-xs text-zinc-400 hover:text-zinc-600 dark:text-zinc-500 dark:hover:text-zinc-300"
+                className="min-h-9 rounded-md border border-zinc-300 px-3 text-xs text-zinc-500 hover:text-zinc-700 disabled:opacity-40 dark:border-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-200"
                 data-testid="macao"
               >
                 Macao
               </button>
+            ) : (
+              <span />
             )}
             <button
               type="button"
               disabled={busy !== null}
               onClick={() => void run("catch")}
-              className="min-h-8 rounded-md px-2 text-xs text-zinc-400 hover:text-zinc-600 dark:text-zinc-500 dark:hover:text-zinc-300"
+              className="min-h-9 rounded-md border border-zinc-300 px-3 text-xs text-zinc-500 hover:text-zinc-700 disabled:opacity-40 dark:border-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-200"
               data-testid="catch"
             >
               Contra-Macao
