@@ -193,7 +193,7 @@ async function playDeal(code, players, { maxMoves = 300, noSuitTested = false } 
 
     let action;
     const targets = players.filter((q) => g.handCounts[q.playerId] === 1 && !g.macao[q.playerId] && !g.finished.includes(q.playerId));
-    const catchers = players.filter((q) => !targets.includes(q));
+    const catchers = players.filter((q) => !targets.includes(q) && !g.finished.includes(q.playerId));
     if (r.macao && targets.length && catchers.length && Math.random() < 0.6) {
       action = { who: pick(catchers), route: "catch", type: "catch", targets: targets.map((q) => q.playerId) };
     } else if (r.macao && before <= 2 && !mine.macao[p.playerId] && Math.random() < 0.4) {

@@ -482,14 +482,14 @@ export function sayMacao(input: Deal, playerId: string): Deal {
 
 /** Players `by` could catch now: one card left and no "Macao" said. */
 export function catchable(deal: Deal, by: string): string[] {
-  if (!deal.rules.macao || isDealOver(deal)) return [];
+  if (!deal.rules.macao || isDealOver(deal) || !activePlayers(deal).includes(by)) return [];
   return activePlayers(deal).filter((id) => id !== by && deal.hands[id].length === 1 && !deal.macao[id]);
 }
 
 /** Counter-macao: everyone caught with one card and no "Macao" draws `macaoPenalty`. */
 export function catchMacao(input: Deal, by: string, random: () => number = Math.random): Deal {
   if (!input.rules.macao) throw new RuleError("Camera se joacă fără „Macao”.");
-  if (!input.order.includes(by)) throw new RuleError("Nu joci în runda asta.");
+  if (!activePlayers(input).includes(by)) throw new RuleError("Nu mai joci în runda asta.");
   const targets = catchable(input, by);
   if (targets.length === 0) throw new RuleError("Nu ai pe cine prinde.");
   const deal = clone(input);

@@ -312,6 +312,13 @@ describe("Macao", () => {
     expect(catchable(late, "b")).toEqual([]);
   });
 
+  it("a player already out of cards cannot catch", () => {
+    const d = make({ a: [], b: ["9C"], c: ["5C", "6C"] }, ["5H"], { roundEnd: "last" }, { finished: ["a"], turn: "c" });
+    expect(catchable(d, "a")).toEqual([]);
+    expect(() => catchMacao(d, "a")).toThrow(RuleError);
+    expect(catchable(d, "c")).toEqual(["b"]);
+  });
+
   it("is switched off by the rule", () => {
     const d = make({ a: ["9H"], b: ["5S"] }, ["5H"], { macao: false });
     expect(() => sayMacao(d, "a")).toThrow(RuleError);

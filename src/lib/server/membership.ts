@@ -21,6 +21,18 @@ export async function removePlayer(room: RoomRow, player: PlayerRow, reason: str
     await notifyRoom(room.id, reason);
     return { roomClosed: false };
   }
+  // The room write is conditional on the version read (like saveRoom): a move made meanwhile is never lost.
+  // On a clash the room is read again and the removal recomputed.
+  let current = room;
+  for (let attempt = 0; attempt < 5; attempt++) {
+    const outcome = await tryRemove(current, player, reason);
+    if (outcome !== "retry") return outcome;
+    current = await getRoomByCode(room.code);
+  }
+  throw new Error("removePlayer: the room kept changing");
+}
+
+async function tryRemove(room: RoomRow, player: PlayerRow, reason: string): Promise<{ roomClosed: boolean } | "retry"> {
   const now = new Date().toISOString();
   const remaining = (await listPlayers(room.id)).filter((p) => p.id !== player.id);
 
@@ -44,7 +56,7 @@ export async function removePlayer(room: RoomRow, player: PlayerRow, reason: str
   if (room.status === "playing" && room.deal?.order.includes(player.id)) {
     const next = removeFromDeal(room.deal, player.id);
     if (next.order.length < MIN_PLAYERS) {
-      const result: RoundResult = { aborted: { nickname: player.nickname }, standings: standings(room.deal), winner: null };
+      const result: RoundResult = { aborted: { nickname: player.nickname }, standings: standings(next), winner: null };
       update.status = "finished";
       update.result = result;
     } else if (isDealOver(next)) {
@@ -59,8 +71,14 @@ export async function removePlayer(room: RoomRow, player: PlayerRow, reason: str
   }
 
   // Update the room first so the host never points at a deleted player.
-  const { error: roomError } = await db().from(T.rooms).update(update).eq("id", room.id);
+  const { data: written, error: roomError } = await db()
+    .from(T.rooms)
+    .update(update)
+    .eq("id", room.id)
+    .eq("version", room.version)
+    .select("id");
   if (roomError) throw roomError;
+  if (!written || written.length === 0) return "retry";
 
   if (newHostId && newHostId !== room.host_player_id) {
     const { error } = await db().from(T.players).update({ is_host: true }).eq("id", newHostId);
@@ -71,7 +89,7 @@ export async function removePlayer(room: RoomRow, player: PlayerRow, reason: str
   if (deleteError) throw deleteError;
   if (finishedDeal) await recordRoundEnd(room, finishedDeal.deal, finishedDeal.result);
 
-  await notifyRoom(room.id, reason);
+  await notifyRoom(room.id, reason, room.version + 1);
   return { roomClosed: false };
 }
 

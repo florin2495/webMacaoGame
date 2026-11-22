@@ -110,7 +110,35 @@ export async function requireMember(
   // Spectators only look (state), queue for the next round and leave; every other action is for players.
   if (player.role === "spectator" && !opts.allowSpectator) fail(403, "Ești spectator: nu poți face asta.");
   await touchPlayer(player);
+  if (player.role === "player" && room.host_player_id && room.host_player_id !== player.id) {
+    room = await takeOverFromOfflineHost(room, player);
+  }
   return { room, player };
+}
+
+/**
+ * A host who has been gone for DISCONNECT_MS (301 s) hands the room to the first seated player who shows up,
+ * so nobody is stuck without "Joacă pentru el" / "Scoate" / dealing. Conditional on the version read.
+ */
+async function takeOverFromOfflineHost(room: RoomRow, player: PlayerRow): Promise<RoomRow> {
+  const { data: host, error } = await db().from(T.players).select("id, last_seen_at").eq("id", room.host_player_id!).maybeSingle();
+  if (error) throw error;
+  if (host && isConnected(host.last_seen_at as string, Date.now())) return room;
+  const version = room.version + 1;
+  const { data: moved, error: moveError } = await db()
+    .from(T.rooms)
+    .update({ host_player_id: player.id, version })
+    .eq("id", room.id)
+    .eq("version", room.version)
+    .select("id");
+  if (moveError) throw moveError;
+  if (!moved || moved.length === 0) return room; // someone else changed the room first; try again next request
+  const { error: e1 } = await db().from(T.players).update({ is_host: false }).eq("room_id", room.id).neq("id", player.id);
+  if (e1) throw e1;
+  const { error: e2 } = await db().from(T.players).update({ is_host: true }).eq("id", player.id);
+  if (e2) throw e2;
+  await notifyRoom(room.id, "host_changed", version);
+  return { ...room, host_player_id: player.id, version };
 }
 
 /** Presence heartbeat: stamps last_seen_at at most every LAST_SEEN_TOUCH_MS. Best effort, never throws. */
