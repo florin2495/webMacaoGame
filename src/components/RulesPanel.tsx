@@ -101,7 +101,7 @@ export function RulesPanel({
           <span className="flex items-start gap-2">
             <span className="mt-1 w-3 shrink-0 text-xs transition-transform group-open/rules:rotate-90">▶</span>
             <span className="min-w-0">
-              <span className="block font-bold">Regulile camerei</span>
+              <span className="block font-bold">Alege regulile</span>
               <span className="block text-xs text-zinc-500">
                 {dirty ? "modificări nesalvate" : editable ? "apasă ca să le schimbi" : "le alege host-ul"}
               </span>

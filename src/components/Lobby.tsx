@@ -3,7 +3,6 @@
 import { MAX_PLAYERS, MIN_PLAYERS } from "@/lib/macao";
 import type { PublicPlayer, RoomState } from "@/lib/types";
 import { OrderControls } from "./Game";
-import { Rules } from "./Home";
 import { KickBadge, OfflineBadge } from "./KickBadge";
 import { RulesPanel } from "./RulesPanel";
 import { Button, Card, ErrorText } from "./ui";
@@ -78,9 +77,6 @@ export function Lobby({
           Jucători ({players.length}/{MAX_PLAYERS})
         </h2>
         <ul className="flex flex-col divide-y divide-zinc-200 dark:divide-zinc-800">{players.map(row)}</ul>
-        <div className="mt-2">
-          <Rules rules={room.rules} title="Regulile camerei" />
-        </div>
       </Card>
     );
   }
@@ -104,7 +100,7 @@ export function Lobby({
         </Card>
       )}
 
-      <RulesPanel rules={room.rules} editable={isHost} busy={busy !== null} onSave={(rules) => run("settings", { rules })} />
+      {isHost && <RulesPanel rules={room.rules} editable busy={busy !== null} onSave={(rules) => run("settings", { rules })} />}
 
       <Card className="flex flex-col gap-3">
         <Button
@@ -123,12 +119,10 @@ export function Lobby({
             {startIssue && <p className="text-center text-sm text-zinc-500">{startIssue}</p>}
           </>
         ) : (
-          <p className="text-center text-sm text-zinc-500">Host-ul împarte cărțile când sunteți toți gata.</p>
+          <p className="text-center text-sm text-zinc-500">Host-ul alege regulile și împarte cărțile când sunteți toți gata. Regulile le vezi jos, deasupra Setărilor.</p>
         )}
         <ErrorText>{error}</ErrorText>
       </Card>
-
-      <Rules rules={room.rules} title="Regulile pe scurt" />
     </>
   );
 }

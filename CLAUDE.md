@@ -69,7 +69,7 @@ iPhone 13). E2E needs the repo secrets `NEXT_PUBLIC_SUPABASE_URL` and `SUPABASE_
 - Playwright files are `*.e2e.ts`, never `*.spec.ts` / `*.test.ts` (Vitest would pick those up).
 - Test ids used by `tests/ui` (renaming one breaks it): `home-submit`, `tab-create` / `tab-join`, `room-list`,
   `join-submit`, `room` (`data-status`, `data-round`, `data-version`), `room-code`, `leave`, `lobby-players`, `ready`,
-  `start-game`, `rules-panel`, `rule-<key>` selects, `my-hand` (buttons `data-card`, `data-legal`), `play-selected`,
+  `start-game`, `rules-panel` (host only), `rules-card` (every room screen, above Setări), `save-rules`, `rule-<key>` selects, `my-hand` (buttons `data-card`, `data-legal`), `play-selected`,
   `suit-picker`, `suit-S|H|D|C`, `pile` (`data-top`), `chosen-suit`, `draw`, `take`, `sit`, `pass`, `macao`, `catch`,
   `seat` (`data-player-id`, `data-turn`, `data-count`), `game-status`, `game-log`, `finished-panel`, `new-round`,
   `back-to-lobby`, `spectator-list`, `spectator-status`, `queue-toggle`.

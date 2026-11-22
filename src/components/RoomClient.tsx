@@ -23,6 +23,7 @@ import { FeedbackButton } from "./FeedbackButton";
 import { Game } from "./Game";
 import { KickClockContext, KickModal } from "./KickBadge";
 import { Lobby } from "./Lobby";
+import { RulesCard } from "./RulesCard";
 import { SettingsPanel } from "./SettingsPanel";
 import { Spectators } from "./Spectators";
 import { Button, Card, ErrorText, Field } from "./ui";
@@ -223,6 +224,7 @@ function Room({ code, token }: { code: string; token: string }) {
         <Game state={state} token={token} refresh={refresh} applyState={applyState} />
       )}
       <Spectators state={state} token={token} refresh={refresh} />
+      <RulesCard rules={state.game?.rules ?? state.room.rules} />
       <SettingsPanel />
       <LeaveButton state={state} token={token} />
       <KickModal state={state} token={token} refresh={refresh} />
