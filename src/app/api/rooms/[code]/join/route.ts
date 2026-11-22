@@ -2,7 +2,6 @@ import { enforceExpiredKicks } from "@/lib/server/membership";
 import { MAX_PLAYERS, NICKNAME_MAX } from "@/lib/macao";
 import { notifyRoom } from "@/lib/server/broadcast";
 import { hashDeviceId, hashToken, newPlayerToken, verifyPassword } from "@/lib/server/crypto";
-import { balanceTeams } from "@/lib/server/deal";
 import { db, MAX_SPECTATORS, T } from "@/lib/server/db";
 import { cleanText, fail, handle, isUniqueViolation, readJson } from "@/lib/server/http";
 import { getRoomByCode, touchRoom } from "@/lib/server/room";
@@ -19,8 +18,8 @@ interface SeatRow {
 }
 
 // POST /api/rooms/[code]/join  { nickname, password?, deviceId? }
-// A nickname that already has a seat in the room reclaims that seat (same player id, new token; team, ready
-// and wins kept) when the request comes from the same device or the seat has been disconnected for 301 s -
+// A nickname that already has a seat in the room reclaims that seat (same player id, new token; ready,
+// wins and score kept) when the request comes from the same device or the seat has been disconnected for 301 s -
 // in the lobby, mid-deal and after a deal alike.
 export async function POST(req: Request, ctx: RouteContext<"/api/rooms/[code]/join">) {
   return handle(async () => {
@@ -49,7 +48,7 @@ export async function POST(req: Request, ctx: RouteContext<"/api/rooms/[code]/jo
       if (seatClaim(existing, deviceHash, Date.now()) === "busy") fail(409, seatBusyMessage(existing.nickname));
       const token = newPlayerToken();
       // Conditional on the old token: two reclaims at once -> only one wins, the other gets a 409.
-      // A pending kick is dropped (the player is back); team / ready / wins stay with the seat.
+      // A pending kick is dropped (the player is back); ready / wins / score stay with the seat.
       const { data, error } = await db()
         .from(T.players)
         .update({
@@ -95,7 +94,6 @@ export async function POST(req: Request, ctx: RouteContext<"/api/rooms/[code]/jo
     if (isUniqueViolation(error)) fail(409, "Nickname-ul e deja folosit în cameră.");
     if (error) throw error;
 
-    if (room.teams && !spectate) await balanceTeams(room.id);
     await touchRoom(room.id);
     await notifyRoom(room.id, spectate ? "spectator_joined" : "player_joined");
     return { code: room.code, playerId: data.id, token };

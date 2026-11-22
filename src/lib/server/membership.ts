@@ -1,5 +1,5 @@
 import "server-only";
-import { sides } from "@/lib/macao";
+import { standings } from "@/lib/macao";
 import type { RoundResult } from "@/lib/types";
 import { notifyRoom } from "./broadcast";
 import { db, PLAYER_COLUMNS, type PlayerRow, type RoomRow, T } from "./db";
@@ -39,7 +39,7 @@ export async function removePlayer(room: RoomRow, player: PlayerRow, reason: str
   };
 
   if (room.status === "playing" && room.deal?.order.includes(player.id)) {
-    const result: RoundResult = { aborted: { nickname: player.nickname }, sides: sides(room.deal), winners: [] };
+    const result: RoundResult = { aborted: { nickname: player.nickname }, standings: standings(room.deal), winner: null };
     update.status = "finished";
     update.result = result;
   }

@@ -21,8 +21,8 @@ test("a late joiner watches as a spectator and plays from the next round", async
       await joinRoom(spectator, room.code);
       const sp = spectator.page;
       await expect(sp.getByTestId("spectator-status")).toContainText("Privești runda");
-      await expect(sp.getByTestId("trick-table")).toBeVisible();
-      for (const id of ["my-hand", "ready", "let-go", "new-round"]) await expect(sp.getByTestId(id)).toHaveCount(0);
+      await expect(sp.getByTestId("pile")).toBeVisible();
+      for (const id of ["my-hand", "ready", "draw", "macao", "catch", "new-round"]) await expect(sp.getByTestId(id)).toHaveCount(0);
       for (const p of [host, guest]) {
         await expect(p.page.getByTestId("spectator-list")).toContainText(spectator.name, { timeout: REALTIME_MS });
       }

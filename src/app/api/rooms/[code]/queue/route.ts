@@ -1,6 +1,5 @@
 import { MAX_PLAYERS } from "@/lib/macao";
 import { notifyRoom } from "@/lib/server/broadcast";
-import { balanceTeams } from "@/lib/server/deal";
 import { db, T } from "@/lib/server/db";
 import { fail, handle } from "@/lib/server/http";
 import { listPlayers, requireMember, touchRoom } from "@/lib/server/room";
@@ -20,11 +19,10 @@ export async function POST(req: Request, ctx: RouteContext<"/api/rooms/[code]/qu
       const seat = players.reduce((m, p) => Math.max(m, p.seat), -1) + 1;
       const { error } = await db()
         .from(T.players)
-        .update({ role: "player", queued_at: null, seat, ready: false, team: null, wins: 0 })
+        .update({ role: "player", queued_at: null, seat, ready: false, wins: 0, score: 0 })
         .eq("id", player.id)
         .eq("role", "spectator");
       if (error) throw error;
-      if (room.teams) await balanceTeams(room.id);
       await touchRoom(room.id);
       await notifyRoom(room.id, "player_joined");
       return { ok: true, joined: true };

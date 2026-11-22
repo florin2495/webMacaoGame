@@ -1,5 +1,6 @@
 import { connection } from "next/server";
 import { NICKNAME_MAX } from "@/lib/macao";
+import { DEFAULT_RULES } from "@/lib/rules";
 import { hashDeviceId, hashPassword, hashToken, newPlayerToken, newRoomCode } from "@/lib/server/crypto";
 import { db, T } from "@/lib/server/db";
 import { cleanText, fail, handle, isUniqueViolation, readJson } from "@/lib/server/http";
@@ -15,7 +16,7 @@ export async function GET() {
     await Promise.all([cleanupExpiredRooms(), cleanupAbandonedRooms()]);
     const { data, error } = await db()
       .from(T.rooms)
-      .select("code, name, teams, status, password_hash, last_activity_at, players:macao_players!macao_players_room_id_fkey(role)")
+      .select("code, name, status, password_hash, last_activity_at, players:macao_players!macao_players_room_id_fkey(role)")
       .order("last_activity_at", { ascending: false })
       .limit(50);
     if (error) throw error;
@@ -25,7 +26,6 @@ export async function GET() {
       return {
         code: r.code,
         name: r.name,
-        teams: r.teams,
         hasPassword: r.password_hash !== null,
         status: r.status,
         players: seated,
@@ -36,14 +36,13 @@ export async function GET() {
   });
 }
 
-// POST /api/rooms { name, nickname, password?, teams?, deviceId? } - create a room and its host player.
+// POST /api/rooms { name, nickname, password?, deviceId? } - create a room and its host player.
 export async function POST(req: Request) {
   return handle(async () => {
     await cleanupExpiredRooms();
     const body = await readJson(req);
     const name = cleanText(body.name, "Numele camerei", 1, 40);
     const nickname = cleanText(body.nickname, "Nickname-ul", 1, NICKNAME_MAX);
-    const teams = body.teams === true;
 
     let passwordHash: string | null = null;
     if (typeof body.password === "string" && body.password.length > 0) {
@@ -55,7 +54,7 @@ export async function POST(req: Request) {
     for (let attempt = 0; attempt < 5 && !room; attempt++) {
       const { data, error } = await db()
         .from(T.rooms)
-        .insert({ code: newRoomCode(), name, password_hash: passwordHash, teams })
+        .insert({ code: newRoomCode(), name, password_hash: passwordHash, rules: DEFAULT_RULES })
         .select("id, code")
         .single();
       if (error && !isUniqueViolation(error)) throw error;
@@ -72,7 +71,6 @@ export async function POST(req: Request) {
         token_hash: hashToken(token),
         device_hash: hashDeviceId(body.deviceId),
         is_host: true,
-        team: teams ? 0 : null,
       })
       .select("id")
       .single();

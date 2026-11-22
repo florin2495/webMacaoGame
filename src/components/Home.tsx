@@ -5,11 +5,12 @@ import { useEffect, useRef, useState, type FormEvent } from "react";
 import { api, ApiRequestError, clearSession, deviceId, listSessions, parseSession, readSessionRaw, saveSession } from "@/lib/client/api";
 import { PREF_NICKNAME, useStringPref, writePref } from "@/lib/client/prefs";
 import { NICKNAME_MAX } from "@/lib/macao";
+import { DEFAULT_RULES, describeRules, type Rules } from "@/lib/rules";
 import type { RoomListItem, RoomState } from "@/lib/types";
 import { FeedbackButton } from "./FeedbackButton";
 import { PlayingCard } from "./PlayingCard";
 import { RoomList } from "./RoomList";
-import { Button, Card, ErrorText, Field, Toggle } from "./ui";
+import { Button, Card, ErrorText, Field } from "./ui";
 
 interface JoinResult {
   code: string;
@@ -29,7 +30,6 @@ export function Home() {
   const nickname = typedNickname ?? storedNickname ?? "";
   const [roomName, setRoomName] = useState("");
   const [password, setPassword] = useState("");
-  const [teams, setTeams] = useState(false);
   const [code, setCode] = useState("");
   const [picked, setPicked] = useState<RoomListItem | null>(null);
   const nicknameRef = useRef<HTMLInputElement>(null);
@@ -59,7 +59,7 @@ export function Home() {
     try {
       const res =
         tab === "create"
-          ? await api<JoinResult>("/api/rooms", { body: { name: roomName, nickname, password, teams, deviceId: deviceId() } })
+          ? await api<JoinResult>("/api/rooms", { body: { name: roomName, nickname, password, deviceId: deviceId() } })
           : await api<JoinResult>(`/api/rooms/${encodeURIComponent(joinCode)}/join`, {
               body: { nickname, password, deviceId: deviceId() },
             });
@@ -83,14 +83,14 @@ export function Home() {
       </div>
       <header className="text-center">
         <div className="mb-3 flex justify-center gap-1" aria-hidden>
-          {["7S", "10H", "AD", "7C"].map((c, i) => (
+          {["2S", "XR", "AH", "7C"].map((c, i) => (
             <span key={c} style={{ transform: `rotate(${(i - 1.5) * 8}deg)` }}>
               <PlayingCard card={c} size="sm" />
             </span>
           ))}
         </div>
         <h1 className="text-4xl font-black tracking-tight">Macao</h1>
-        <p className="mt-1 text-sm text-zinc-500">Macao clasică, cu 1–3 prieteni, pe telefon. La 4, și pe echipe.</p>
+        <p className="mt-1 text-sm text-zinc-500">Macao cu 2–6 jucători, fiecare pe telefonul lui. Regulile casei le alegi tu.</p>
       </header>
 
       <RejoinCards onRejoin={(c) => router.push(`/room/${c}`)} />
@@ -161,12 +161,7 @@ export function Home() {
             />
           )}
           {tab === "create" && (
-            <Toggle
-              label="Pe echipe (2 contra 2)"
-              hint="Doar în 4 jucători. Partenerii stau față în față și adună punctele împreună. Se poate schimba din lobby."
-              checked={teams}
-              onChange={setTeams}
-            />
+            <p className="text-xs text-zinc-500">Regulile casei (2 și 3, jokeri, stop, stai o tură, schimbat suita, Macao…) le alegi în lobby, înainte să împarți.</p>
           )}
 
           <ErrorText>{error}</ErrorText>
@@ -235,24 +230,17 @@ function RejoinCards({ onRejoin }: { onRejoin: (code: string) => void }) {
   );
 }
 
-export function Rules() {
+/** Default house rules (each room's host can change them in the lobby). */
+export function Rules({ rules = DEFAULT_RULES, title = "Reguli" }: { rules?: Rules; title?: string }) {
   return (
     <details className="text-sm text-zinc-600 dark:text-zinc-400">
-      <summary className="cursor-pointer font-semibold">Reguli</summary>
+      <summary className="cursor-pointer font-semibold">{title}</summary>
       <ol className="mt-2 list-decimal space-y-1 pl-5">
-        <li>Pachet de 32 de cărți (7–A). În 3 jucători se scot doi de 8, rămân 30, iar cei doi de 8 rămași taie ca 7.</li>
-        <li>Fiecare are mereu 4 cărți în mână. Nu ești obligat să răspunzi la culoare sau la valoare.</li>
-        <li>
-          Cine începe mâna pune o carte. Pe rând, fiecare pune câte una. <b>Taie</b> cartea de aceeași valoare cu prima, sau
-          orice <b>7</b> (în 3 jucători și orice <b>8</b>).
-        </li>
-        <li>
-          După ce a pus toată lumea, dacă ai început și ai fost tăiat, poți <b>continua</b> cu o carte de aceeași valoare
-          sau un 7 (în 3 și un 8) (și toată lumea mai pune o carte), sau <b>lași mâna</b>.
-        </li>
-        <li>Mâna o ia ultimul care a tăiat (sau cel care a început, dacă nu a tăiat nimeni). El trage primul din pachet și începe mâna următoare.</li>
-        <li>Fiecare 10 și fiecare As valorează 1 punct (8 în total). Câștigă cine are cele mai multe puncte; 4–4 e egal.</li>
-        <li>În 4 jucători se poate juca pe echipe: jucătorii 1 și 3 contra 2 și 4. Punctele partenerilor se adună.</li>
+        <li>Pui o carte de aceeași suită sau același număr cu cea de sus, ori tragi una din pachet.</li>
+        {describeRules(rules).map((line) => (
+          <li key={line}>{line}</li>
+        ))}
+        <li>Primul care rămâne fără cărți câștigă runda. Ceilalți adună la scor cărțile rămase în mână.</li>
       </ol>
     </details>
   );

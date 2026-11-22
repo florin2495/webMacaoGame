@@ -1,12 +1,13 @@
 "use client";
 
-import { MAX_PLAYERS, MIN_PLAYERS, teamProblem } from "@/lib/macao";
+import { MAX_PLAYERS, MIN_PLAYERS } from "@/lib/macao";
 import type { PublicPlayer, RoomState } from "@/lib/types";
 import { OrderControls } from "./Game";
 import { Rules } from "./Home";
 import { KickBadge, OfflineBadge } from "./KickBadge";
-import { Button, Card, ErrorText, Toggle } from "./ui";
-import { TEAM_NAMES, TEAM_STYLES, useAction } from "./useAction";
+import { RulesPanel } from "./RulesPanel";
+import { Button, Card, ErrorText } from "./ui";
+import { useAction } from "./useAction";
 
 export function Lobby({
   state,
@@ -24,11 +25,12 @@ export function Lobby({
   const { busy, error, run } = useAction(room.code, token, refresh, applyState);
 
   const allReady = players.every((p) => p.ready);
-  const teamIssue = teamProblem(players, room.teams);
   const startIssue =
     players.length < MIN_PLAYERS
       ? `Mai trebuie cel puțin un jucător. Trimite-le codul ${room.code}.`
-      : teamIssue ?? (allReady ? null : "Așteaptă să fie toți gata.");
+      : allReady
+        ? null
+        : "Așteaptă să fie toți gata.";
 
   async function kick(p: PublicPlayer) {
     if (!window.confirm(`Scoți jucătorul ${p.nickname} din cameră?`)) return;
@@ -46,6 +48,7 @@ export function Lobby({
         <OfflineBadge connected={p.connected} />
         <KickBadge remainingMs={p.kickRemainingMs} />
         {p.wins > 0 && <span className="text-xs text-amber-600">🏆{p.wins}</span>}
+        {p.score > 0 && <span className="text-xs text-zinc-500">{p.score} p</span>}
       </span>
       <span className="flex shrink-0 items-center gap-2">
         {p.ready ? (
@@ -75,6 +78,9 @@ export function Lobby({
           Jucători ({players.length}/{MAX_PLAYERS})
         </h2>
         <ul className="flex flex-col divide-y divide-zinc-200 dark:divide-zinc-800">{players.map(row)}</ul>
+        <div className="mt-2">
+          <Rules rules={room.rules} title="Regulile camerei" />
+        </div>
       </Card>
     );
   }
@@ -85,45 +91,22 @@ export function Lobby({
         <h2 className="mb-1 font-bold">
           Jucători ({players.length}/{MAX_PLAYERS})
         </h2>
-        {room.teams ? (
-          <div className="grid gap-3 sm:grid-cols-2">
-            {[0, 1].map((t) => (
-              <div key={t} className={`rounded-lg border px-3 py-1 ${TEAM_STYLES[t]}`}>
-                <h3 className="pt-1 text-sm font-bold">{TEAM_NAMES[t]}</h3>
-                <ul className="divide-y divide-zinc-200 dark:divide-zinc-800">
-                  {players.filter((p) => p.team === t).map(row)}
-                </ul>
-                {me.team !== t && (
-                  <Button variant="secondary" className="my-2 w-full text-sm" disabled={busy !== null} onClick={() => void run("team", { team: t })}>
-                    Trec în {TEAM_NAMES[t]}
-                  </Button>
-                )}
-              </div>
-            ))}
-          </div>
-        ) : (
-          <ul className="flex flex-col divide-y divide-zinc-200 dark:divide-zinc-800">{players.map(row)}</ul>
-        )}
+        <ul className="flex flex-col divide-y divide-zinc-200 dark:divide-zinc-800">{players.map(row)}</ul>
       </Card>
 
       {isHost && players.length > 1 && (
         <Card className="flex flex-col gap-2">
           <h2 className="font-bold">Ordinea de joc</h2>
           <p className="text-xs text-zinc-500">
-            Primul din listă începe runda 1; apoi începutul trece la următorul. {room.teams && "Pe echipe, partenerii stau față în față și se mută doar în echipa lor."}
+            Primul din listă începe runda 1; apoi începutul trece la următorul.
           </p>
           <OrderControls state={state} busy={busy} run={run} nextRound={room.round} />
         </Card>
       )}
 
+      <RulesPanel rules={room.rules} editable={isHost} busy={busy !== null} onChange={(patch) => void run("settings", { rules: patch })} />
+
       <Card className="flex flex-col gap-3">
-        <Toggle
-          label="Pe echipe (2 contra 2)"
-          hint={isHost ? "Doar în 4 jucători. Schimbarea resetează „gata” la toți." : "Doar host-ul poate schimba."}
-          checked={room.teams}
-          disabled={!isHost || busy !== null}
-          onChange={(v) => void run("settings", { teams: v })}
-        />
         <Button
           variant={me.ready ? "secondary" : "primary"}
           disabled={busy !== null}
@@ -145,7 +128,7 @@ export function Lobby({
         <ErrorText>{error}</ErrorText>
       </Card>
 
-      <Rules />
+      <Rules rules={room.rules} title="Regulile pe scurt" />
     </>
   );
 }

@@ -1,6 +1,7 @@
 import "server-only";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import type { Deal } from "@/lib/macao";
+import type { Rules } from "@/lib/rules";
 import type { RoundResult } from "@/lib/types";
 
 /**
@@ -33,7 +34,8 @@ export interface RoomRow {
   code: string;
   name: string;
   password_hash: string | null;
-  teams: boolean;
+  /** Raw JSON from the DB: always pass through normalizeRules before use. */
+  rules: Partial<Rules> | null;
   status: "lobby" | "playing" | "finished";
   round: number;
   host_player_id: string | null;
@@ -44,7 +46,7 @@ export interface RoomRow {
 }
 
 export const ROOM_COLUMNS =
-  "id, code, name, password_hash, teams, status, round, host_player_id, deal, result, version, last_activity_at";
+  "id, code, name, password_hash, rules, status, round, host_player_id, deal, result, version, last_activity_at";
 
 export interface PlayerRow {
   id: string;
@@ -52,14 +54,14 @@ export interface PlayerRow {
   nickname: string;
   is_host: boolean;
   ready: boolean;
-  team: number | null;
   wins: number;
+  score: number;
   joined_at: string;
-  /** Pending host kick during a game (null = none). Needs migration 001. */
+  /** Pending host kick during a game (null = none). */
   kick_requested_at: string | null;
-  /** Presence stamp, touched by requireMember. Needs migration 002_reconnect.sql. */
+  /** Presence stamp, touched by requireMember. */
   last_seen_at: string;
-  /** Play order (host can reorder). Needs migration 003_seat_spectator.sql. */
+  /** Play order (host can reorder). */
   seat: number;
   role: "player" | "spectator";
   /** Spectator waiting for a seat in the next round (null = not queued). */
@@ -68,6 +70,6 @@ export interface PlayerRow {
 
 /** Never add token_hash / device_hash here: these rows feed the public state. */
 export const PLAYER_COLUMNS =
-  "id, room_id, nickname, is_host, ready, team, wins, joined_at, kick_requested_at, last_seen_at, seat, role, queued_at";
+  "id, room_id, nickname, is_host, ready, wins, score, joined_at, kick_requested_at, last_seen_at, seat, role, queued_at";
 
 export const MAX_SPECTATORS = 16;

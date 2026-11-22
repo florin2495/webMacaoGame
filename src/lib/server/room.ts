@@ -1,6 +1,6 @@
 import "server-only";
 import {
-  canLetGo,
+  activePlayers,
   type Deal,
   isDealOver,
   isRoomAbandoned,
@@ -10,10 +10,9 @@ import {
   ROOM_ABANDONED_MS,
   ROOM_IDLE_MINUTES,
   RuleError,
-  sides,
-  trickHolder,
-  winningSides,
+  standings,
 } from "@/lib/macao";
+import { normalizeRules } from "@/lib/rules";
 import type { GameView, PublicPlayer, RoomState, RoundResult } from "@/lib/types";
 import { notifyRoom } from "./broadcast";
 import { hashToken } from "./crypto";
@@ -181,16 +180,14 @@ export async function saveRoom(room: RoomRow, patch: Partial<Omit<RoomRow, "id" 
   if (!data || data.length === 0) fail(409, "Altcineva a mutat între timp. Mai încearcă o dată.");
 }
 
-/** Outcome of a finished deal. */
+/** Outcome of a finished deal: the first player out wins. */
 export function dealResult(deal: Deal): RoundResult {
-  const all = sides(deal);
-  const best = winningSides(all);
-  return { sides: all, winners: best.map((s) => s.index) };
+  return { standings: standings(deal), winner: deal.finished[0] ?? null };
 }
 
 /**
  * Applies a move to the running deal and saves it. When the deal is over the round finishes:
- * the result is stored and the winners' (single winning side only - a draw gives nothing) wins go up.
+ * the result is stored, the winner's wins go up and everyone's score grows by the cards left in hand.
  */
 export async function applyMove(
   room: RoomRow,
@@ -216,18 +213,23 @@ export async function applyMove(
   const result = dealResult(next);
   await saveRoom(room, { deal: next, status: "finished", result });
   const players = await listPlayers(room.id);
-  const winners = result.winners.length === 1 ? result.sides[result.winners[0]].members : [];
-  for (const p of players.filter((x) => winners.includes(x.id))) {
-    const { error } = await db().from(T.players).update({ wins: p.wins + 1 }).eq("id", p.id);
+  for (const p of players) {
+    const st = result.standings.find((x) => x.playerId === p.id);
+    if (!st) continue;
+    const won = result.winner === p.id;
+    const { error } = await db()
+      .from(T.players)
+      .update({ wins: p.wins + (won ? 1 : 0), score: p.score + st.cardsLeft })
+      .eq("id", p.id);
     if (error) throw error;
   }
-  // Hub leaderboard: everybody who played gets a game, the winning side a win (a draw has no winner).
+  // Hub leaderboard: everybody who played gets a game, the winner a win.
   // Test rooms (e2e-test-*, run against the production DB) never count.
   if (!isTestRoom(room.name)) {
     await reportRound(
       room.code,
       room.round,
-      players.filter((x) => next.order.includes(x.id)).map((x) => ({ nickname: x.nickname, won: winners.includes(x.id) })),
+      players.filter((x) => next.order.includes(x.id)).map((x) => ({ nickname: x.nickname, won: result.winner === x.id })),
     );
   }
   const [state] = await Promise.all([
@@ -247,31 +249,43 @@ const toPublic = (p: PlayerRow, now: number): PublicPlayer => ({
   nickname: p.nickname,
   isHost: p.is_host,
   ready: p.ready,
-  team: p.team,
   wins: p.wins,
+  score: p.score,
   kickRemainingMs: kickRemainingMs(p.kick_requested_at, now),
   connected: isConnected(p.last_seen_at, now),
   role: p.role,
   queued: p.queued_at !== null,
 });
 
+/** How many cards of the pile the clients see (the top one last). */
+const PILE_VIEW = 5;
+
 function gameView(deal: Deal, meId: string, finished: boolean): GameView {
+  const active = !finished && activePlayers(deal).includes(meId);
+  const myTurn = active && deal.turn === meId;
+  const handCounts = Object.fromEntries(deal.order.map((id) => [id, deal.hands[id]?.length ?? 0]));
   return {
     order: deal.order,
-    teams: deal.teams,
-    leader: deal.leader,
+    rules: deal.rules,
     turn: finished ? null : deal.turn,
-    phase: deal.phase,
-    trick: deal.trick,
-    holder: trickHolder(deal.trick, deal.order.length),
-    hand: deal.hands[meId] ?? [],
-    legal: finished || !deal.order.includes(meId) ? [] : legalCards(deal, meId),
-    canLetGo: !finished && deal.order.includes(meId) && canLetGo(deal, meId),
-    handCounts: Object.fromEntries(deal.order.map((id) => [id, deal.hands[id]?.length ?? 0])),
+    pile: deal.discard.slice(-PILE_VIEW),
+    suit: deal.suit,
+    pendingDraw: deal.pendingDraw,
+    pendingSkip: deal.pendingSkip,
+    sitOut: deal.sitOut,
+    handCounts,
     stockCount: deal.stock.length,
-    sides: sides(deal),
-    lastTrick: deal.lastTrick,
-    tricksPlayed: deal.tricksPlayed,
+    finished: deal.finished,
+    macao: Object.fromEntries(deal.order.map((id) => [id, deal.macao[id] === true && handCounts[id] <= 2 && handCounts[id] > 0])),
+    log: deal.log,
+    moves: deal.moves,
+    hand: deal.hands[meId] ?? [],
+    legal: myTurn ? legalCards(deal, meId) : [],
+    drawn: myTurn ? deal.drawn : null,
+    canDraw: myTurn && !deal.drawn && deal.pendingDraw === 0 && deal.pendingSkip === 0,
+    canPass: myTurn && deal.drawn !== null,
+    canTake: myTurn && deal.pendingDraw > 0,
+    canSit: myTurn && deal.pendingSkip > 0,
   };
 }
 
@@ -292,7 +306,7 @@ export async function buildState(room: RoomRow, me: PlayerRow): Promise<RoomStat
       id: room.id,
       code: room.code,
       name: room.name,
-      teams: room.teams,
+      rules: normalizeRules(room.rules),
       status: room.status,
       round: room.round,
       version: room.version,

@@ -43,9 +43,3 @@ export function useAction(
 
   return { busy, error, run, setError };
 }
-
-export const TEAM_NAMES = ["Echipa 1", "Echipa 2"];
-export const TEAM_STYLES = [
-  "border-indigo-400 bg-indigo-50 dark:border-indigo-700 dark:bg-indigo-950",
-  "border-amber-400 bg-amber-50 dark:border-amber-700 dark:bg-amber-950",
-];

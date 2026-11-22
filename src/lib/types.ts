@@ -1,4 +1,5 @@
-import type { Card, Play, TrickSummary } from "./macao";
+import type { Card, LogEntry, Standing, Suit } from "./macao";
+import type { Rules } from "./rules";
 
 export type RoomStatus = "lobby" | "playing" | "finished";
 
@@ -7,10 +8,10 @@ export interface PublicPlayer {
   nickname: string;
   isHost: boolean;
   ready: boolean;
-  /** 0 / 1 in team rooms, null otherwise. */
-  team: number | null;
   /** Rounds won in this room. */
   wins: number;
+  /** Cards left in hand at the end of every round in this room, added up (lower is better). */
+  score: number;
   /** Ms left to press "Ignoră" on a pending kick (0-10000), null when none. */
   kickRemainingMs: number | null;
   /** Seen in the last 301 s (see lib/reconnect.ts). False = phone in the background, closed tab, no network. */
@@ -20,41 +21,43 @@ export interface PublicPlayer {
   queued: boolean;
 }
 
-export interface SideView {
-  index: number;
-  members: string[];
-  points: number;
-  cards: number;
-}
-
 /** Outcome of a deal, stored on the room. */
 export interface RoundResult {
   /** Set when the deal was cut short (someone left). */
   aborted?: { nickname: string };
-  sides: SideView[];
-  /** Indexes of the winning sides (several = draw). Empty when aborted. */
-  winners: number[];
+  standings: Standing[];
+  /** First player out of cards; null when aborted. */
+  winner: string | null;
 }
 
 /** What a member sees of the running deal. Other players' hands are only counts. */
 export interface GameView {
   order: string[];
-  teams: boolean;
-  leader: string;
+  rules: Rules;
   turn: string | null;
-  phase: "play" | "decide";
-  trick: Play[];
-  /** Who currently holds the trick. */
-  holder: string | null;
-  hand: Card[];
-  /** Cards the caller may play right now. */
-  legal: Card[];
-  canLetGo: boolean;
+  /** Last cards of the pile, the top one last. */
+  pile: Card[];
+  /** Suit chosen with the change-suit card, null otherwise. */
+  suit: Suit | null;
+  pendingDraw: number;
+  pendingSkip: number;
+  sitOut: Record<string, number>;
   handCounts: Record<string, number>;
   stockCount: number;
-  sides: SideView[];
-  lastTrick: TrickSummary | null;
-  tricksPlayed: number;
+  finished: string[];
+  /** Who said "Macao" (and still holds one or two cards). */
+  macao: Record<string, boolean>;
+  log: LogEntry[];
+  moves: number;
+  hand: Card[];
+  /** Single cards the caller may put down right now. */
+  legal: Card[];
+  /** The card the caller just drew and may still put down. */
+  drawn: Card | null;
+  canDraw: boolean;
+  canPass: boolean;
+  canTake: boolean;
+  canSit: boolean;
 }
 
 export interface RoomState {
@@ -62,7 +65,7 @@ export interface RoomState {
     id: string;
     code: string;
     name: string;
-    teams: boolean;
+    rules: Rules;
     status: RoomStatus;
     round: number;
     /** Bumped on every deal write: lets the client drop stale / duplicate state. */
@@ -70,7 +73,7 @@ export interface RoomState {
     hasPassword: boolean;
     hostPlayerId: string | null;
   };
-  /** Seat order while playing/finished, join order in the lobby. */
+  /** Seat order while playing, saved seat order otherwise. */
   players: PublicPlayer[];
   /** Watchers (max 16), queued ones first. Never get hands. */
   spectators: PublicPlayer[];
@@ -83,7 +86,6 @@ export interface RoomState {
 export interface RoomListItem {
   code: string;
   name: string;
-  teams: boolean;
   hasPassword: boolean;
   status: RoomStatus;
   /** Seated players. */

@@ -311,8 +311,7 @@ function RoomHeader({ state }: { state: RoomState }) {
           <FeedbackButton compact />
         </div>
         <p className="text-xs text-zinc-500">
-          {room.teams ? "pe echipe" : "fiecare pentru el"} · runda{" "}
-          {room.round} · {statusLabel}
+          runda {room.round} · {statusLabel}
         </p>
       </div>
       <button

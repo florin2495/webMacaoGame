@@ -1,5 +1,6 @@
 import "server-only";
-import { MAX_PLAYERS, MIN_PLAYERS, newDeal, roundLeader, seatOrder, teamProblem } from "@/lib/macao";
+import { MAX_PLAYERS, MIN_PLAYERS, newDeal, roundLeader } from "@/lib/macao";
+import { normalizeRules } from "@/lib/rules";
 import { notifyRoom } from "./broadcast";
 import { db, type RoomRow, T } from "./db";
 import { fail } from "./http";
@@ -14,28 +15,12 @@ export async function startDeal(room: RoomRow, round: number, requireReady: bool
     const notReady = players.filter((p) => !p.ready);
     if (notReady.length > 0) fail(409, `Nu sunt toți gata: ${notReady.map((p) => p.nickname).join(", ")}.`);
   }
-  const problem = teamProblem(players, room.teams);
-  if (problem) fail(409, problem);
-
-  const order = seatOrder(players, room.teams);
-  const deal = newDeal(order, roundLeader(order, round), room.teams);
+  const order = players.map((p) => p.id);
+  const deal = newDeal(order, roundLeader(order, round), normalizeRules(room.rules));
   await saveRoom(room, { status: "playing", round, deal, result: null });
   const { error } = await db().from(T.players).update({ kick_requested_at: null }).eq("room_id", room.id);
   if (error) throw error;
   await notifyRoom(room.id, "deal_started", room.version + 1, by);
-}
-
-/** Alternating teams in join order, for players without one (teams switched on / player joined). */
-export async function balanceTeams(roomId: string): Promise<void> {
-  const players = await listPlayers(roomId);
-  const count = [players.filter((p) => p.team === 0).length, players.filter((p) => p.team === 1).length];
-  for (const p of players) {
-    if (p.team === 0 || p.team === 1) continue;
-    const team = count[0] <= count[1] ? 0 : 1;
-    count[team] += 1;
-    const { error } = await db().from(T.players).update({ team }).eq("id", p.id);
-    if (error) throw error;
-  }
 }
 
 /**
@@ -52,13 +37,12 @@ export async function promoteQueued(room: RoomRow): Promise<number> {
     if (count >= MAX_PLAYERS) break;
     const { error } = await db()
       .from(T.players)
-      .update({ role: "player", queued_at: null, seat: seat++, ready: false, team: null, wins: 0 })
+      .update({ role: "player", queued_at: null, seat: seat++, ready: false, wins: 0, score: 0 })
       .eq("id", s.id)
       .eq("role", "spectator");
     if (error) throw error;
     count++;
     promoted++;
   }
-  if (promoted > 0 && room.teams) await balanceTeams(room.id);
   return promoted;
 }

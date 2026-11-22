@@ -1,8 +1,8 @@
 // Scenario 1: two real browsers play a live deal on the deployed site: create, join by link, ready, deal, every
-// move (card or "Las mâna") reaches the other screen through Realtime (well under the 60 s polling fallback), the
+// move (card, draw, take, sit) reaches the other screen through Realtime (well under the 60 s polling fallback), the
 // end-of-round panel, a new round followed live, leave mid-round (round cancelled), leave. Runs on every project.
 import { expect, test } from "@playwright/test";
-import { createRoom, joinRoom, leaveAll, playDeal, readyAndStart, REALTIME_MS, resultHeadline, withPlayers } from "./helpers";
+import { createRoom, HAND_SIZE, joinRoom, leaveAll, playDeal, readyAndStart, REALTIME_MS, resultHeadline, withPlayers } from "./helpers";
 
 test("two players play a live deal to the end", async ({ browser }) => {
   await withPlayers(browser, ["Ana", "Bob"], async (players, room) => {
@@ -17,7 +17,7 @@ test("two players play a live deal to the end", async ({ browser }) => {
 
     await test.step("both get ready, the host deals", () => readyAndStart(players));
 
-    await test.step("each sees the other in the top row and four cards in hand", async () => {
+    await test.step("each sees the other in the top row", async () => {
       await expect(host.page.getByTestId("seat")).toHaveCount(1);
       await expect(host.page.getByTestId("seat")).toContainText(guest.name);
       await expect(guest.page.getByTestId("seat")).toContainText(host.name);
@@ -36,7 +36,7 @@ test("two players play a live deal to the end", async ({ browser }) => {
       await host.page.getByTestId("new-round").click();
       for (const p of players) {
         await expect(p.page.getByTestId("room")).toHaveAttribute("data-round", "2", { timeout: REALTIME_MS });
-        await expect(p.page.getByTestId("my-hand").getByRole("button")).toHaveCount(4);
+        await expect(p.page.getByTestId("my-hand").getByRole("button")).toHaveCount(HAND_SIZE);
       }
     });
 

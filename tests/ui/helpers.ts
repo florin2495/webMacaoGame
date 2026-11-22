@@ -1,7 +1,7 @@
 // Shared steps for the Playwright UI tests (tests/ui/*.e2e.ts). Not a test file itself (no .e2e.ts suffix).
 // Rooms are named "e2e-test-ui-…" (never counted on the hub leaderboard); a leftover is deleted with the service
 // key (env) as a safety net. The deal is random: every move is picked from the /state JSON of the player on turn
-// (read with their stored token), then made by clicking that card (or "Las mâna") on their screen.
+// (read with their stored token), then made by clicking that card (or a draw / take / sit button) on their screen.
 import { expect, test, type Browser, type BrowserContext, type Page } from "@playwright/test";
 import type { RoomState } from "../../src/lib/types";
 
@@ -80,15 +80,20 @@ export async function readyAndStart(players: Player[]): Promise<void> {
   await host.page.getByTestId("start-game").click();
   for (const p of players) {
     await expect(p.page.getByTestId("room")).toHaveAttribute("data-status", "playing", { timeout: REALTIME_MS });
-    await expect(p.page.getByTestId("my-hand").getByRole("button")).toHaveCount(4);
+    await expect(p.page.getByTestId("my-hand").getByRole("button")).toHaveCount(HAND_SIZE);
   }
 }
 
+/** Cards dealt with the default house rules (every UI test plays with them). */
+export const HAND_SIZE = 5;
+
+const rankOf = (card: string) => (card === "XB" || card === "XR" ? "X" : card.slice(0, -1));
+
 /**
  * Makes one move for whoever is on turn, on their screen: a random legal card (clicked, or tapped on a touch
- * device), or "Las mâna" when allowed (sometimes, or when no card cuts). Every other screen (players and
- * `watchers`) must show the new state within REALTIME_MS, and a played card on its felt. Returns the new state
- * as the mover's action response carried it.
+ * device; with a twin in hand it is selected and put down with "Pune", a change-suit card asks for ♥), otherwise
+ * "Iau N cărți" / "Stau" / "Păstrez cartea" / "Trag o carte". Every other screen (players and `watchers`) must
+ * show the new state within REALTIME_MS. Returns the new state as the mover's action response carried it.
  */
 export async function playMove(players: Player[], code: string, watchers: Player[] = []): Promise<RoomState> {
   const ref = await stateOf(players[0], code);
@@ -99,40 +104,52 @@ export async function playMove(players: Player[], code: string, watchers: Player
   // The mover's screen must be current before it acts.
   await expectVersion(mover, mine.room.version);
 
-  const letGo = g.canLetGo && (g.legal.length === 0 || Math.random() < 0.3);
-  const card = letGo ? null : g.legal[Math.floor(Math.random() * g.legal.length)];
-  if (!letGo && !card) throw new Error(`${mover.name} is on turn but has no legal card and cannot let go`);
-  const action = letGo ? "let-go" : "play";
-  const target = letGo ? mover.page.getByTestId("let-go") : mover.page.getByTestId("my-hand").locator(`button[data-card="${card}"]`);
+  const page = mover.page;
   const touch = test.info().project.use.hasTouch === true;
-  const [res] = await Promise.all([
-    mover.page.waitForResponse((r) => r.url().endsWith(`/api/rooms/${code}/${action}`) && r.request().method() === "POST"),
-    touch ? target.tap() : target.click(),
-  ]);
+  const press = (testId: string) => (touch ? page.getByTestId(testId).first().tap() : page.getByTestId(testId).first().click());
+  const card = g.legal.length > 0 ? g.legal[Math.floor(Math.random() * g.legal.length)] : null;
+  const action = card ? "play" : g.canTake ? "take" : g.canSit ? "sit" : g.canPass ? "pass" : g.canDraw ? "draw" : null;
+  if (!action) throw new Error(`${mover.name} is on turn but can do nothing`);
+
+  const response = page.waitForResponse((r) => r.url().endsWith(`/api/rooms/${code}/${action}`) && r.request().method() === "POST");
+  if (card) {
+    const target = page.getByTestId("my-hand").locator(`button[data-card="${card}"]`);
+    await (touch ? target.tap() : target.click());
+    const twins = g.rules.multiPlay && !g.drawn && g.hand.some((c) => c !== card && rankOf(c) === rankOf(card));
+    if (twins) await press("play-selected");
+    if (rankOf(card) === g.rules.changeRank) await press("suit-H");
+  } else {
+    await press(action);
+  }
+  const res = await response;
   expect(res.status(), `${mover.name}: ${action} ${card ?? ""}`).toBe(200);
   const next = (await res.json()) as RoomState;
   expect(next.room.version).toBeGreaterThan(mine.room.version);
 
   for (const other of [...players.filter((p) => p !== mover), ...watchers]) {
     await expectVersion(other, next.room.version);
-    if (card) await expect(other.page.getByTestId("trick-table").locator(`[data-card="${card}"]`)).toBeVisible();
+  }
+  if (card && next.game) {
+    for (const other of [...players.filter((p) => p !== mover), ...watchers]) {
+      await expect(other.page.getByTestId("pile")).toHaveAttribute("data-top", next.game.pile[next.game.pile.length - 1]);
+    }
   }
   return next;
 }
 
 /** Plays the running deal to its end (every move live on the other screens). Returns the final state. */
 export async function playDeal(players: Player[], code: string, watchers: Player[] = []): Promise<RoomState> {
-  for (let moves = 0; moves < 300; moves++) {
+  for (let moves = 0; moves < 400; moves++) {
     const s = await playMove(players, code, watchers);
     if (s.room.status !== "playing") return s;
   }
-  throw new Error("the deal did not end within 300 moves");
+  throw new Error("the deal did not end within 400 moves");
 }
 
 /** Expected headline of the end-of-round panel for a finished (not aborted) deal. */
 export function resultHeadline(s: RoomState): RegExp {
-  const r = s.result!;
-  return r.winners.length === 1 ? /câștigă!/ : /Egalitate!/;
+  const winner = s.players.find((p) => p.id === s.result?.winner)?.nickname ?? "";
+  return new RegExp(`${winner} câștigă!`);
 }
 
 /** Leaves through the "Părăsește" button (accepting the confirm), in the given order. */

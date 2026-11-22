@@ -113,7 +113,7 @@ export function RoomList({
                     <span className={`mr-1 rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase ${badge.className}`}>
                       {badge.label}
                     </span>
-                    {r.teams ? "pe echipe (2 vs 2)" : "fiecare pentru el"} · {r.players}/{MAX_PLAYERS}{" "}
+                    {r.players}/{MAX_PLAYERS}{" "}
                     {r.players === 1 ? "jucător" : "jucători"}
                     {r.spectators > 0 && ` · ${r.spectators} ${r.spectators === 1 ? "spectator" : "spectatori"}`}
                   </span>

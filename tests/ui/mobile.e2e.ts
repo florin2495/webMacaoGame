@@ -7,6 +7,7 @@ import {
   createRoom,
   expectNoHorizontalScroll,
   expectVersion,
+  HAND_SIZE,
   joinRoom,
   leaveAll,
   readyAndStart,
@@ -50,7 +51,7 @@ test("4-player table fits a phone screen and a tap plays a card", async ({ brows
           .getByTestId("my-hand")
           .getByRole("button")
           .evaluateAll((els) => els.map((e) => Math.min(e.getBoundingClientRect().width, e.getBoundingClientRect().height)));
-        expect(cards).toHaveLength(4);
+        expect(cards).toHaveLength(HAND_SIZE);
         expect(Math.min(...cards), `smallest card in ${p.name}'s hand`).toBeGreaterThanOrEqual(MIN_CARD_PX);
       }
       // The host sees "Scoate" (and "Joacă pentru el" on the player on turn) in the narrow seats.
@@ -65,7 +66,10 @@ test("4-player table fits a phone screen and a tap plays a card", async ({ brows
     await test.step("a tap plays a card, the other phones see it live", async () => {
       const s = await stateOf(host, room.code);
       expect(s.game?.turn).toBe(s.me.id); // the host leads round 1
-      const card = s.game!.legal[0];
+      // A plain card goes down at once (a twin would be selected first, a change-suit card asks for the suit).
+      const rank = (c: string) => c.slice(0, -1);
+      const card = s.game!.legal.find((c) => !c.startsWith("X") && rank(c) !== "7" && s.game!.hand.filter((h) => rank(h) === rank(c)).length === 1);
+      test.skip(!card, "no plain single card to tap in this random deal");
       const [res] = await Promise.all([
         host.page.waitForResponse((r) => r.url().endsWith(`/api/rooms/${room.code}/play`) && r.request().method() === "POST"),
         host.page.getByTestId("my-hand").locator(`button[data-card="${card}"]`).tap(), // a touch tap, not a mouse click
@@ -74,10 +78,10 @@ test("4-player table fits a phone screen and a tap plays a card", async ({ brows
       const v = ((await res.json()) as { room: { version: number } }).room.version;
       for (const g of guests) {
         await expectVersion(g, v);
-        await expect(g.page.getByTestId("trick-table").locator(`[data-card="${card}"]`)).toBeVisible();
+        await expect(g.page.getByTestId("pile")).toHaveAttribute("data-top", card!);
         await expectNoHorizontalScroll(g.page);
       }
-      await expect(host.page.getByTestId("my-hand").getByRole("button")).toHaveCount(3);
+      await expect(host.page.getByTestId("my-hand").getByRole("button")).toHaveCount(HAND_SIZE - 1);
     });
 
     await test.step("everyone leaves, the room closes", async () => {
