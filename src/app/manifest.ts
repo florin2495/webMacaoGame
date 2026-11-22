@@ -4,7 +4,7 @@ export default function manifest(): MetadataRoute.Manifest {
   return {
     name: "Macao",
     short_name: "Macao",
-    description: "Macao multiplayer între prieteni, 2-4 jucători, și pe echipe.",
+    description: "Macao multiplayer între prieteni, 2-6 jucători, cu regulile casei alese de host.",
     id: "/macao/",
     start_url: "/macao/",
     // "/" on purpose: leaving the game for the hub (same origin) stays inside the installed app.

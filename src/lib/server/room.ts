@@ -203,6 +203,8 @@ export async function applyMove(
     if (err instanceof RuleError) fail(409, err.message);
     throw err;
   }
+  // Nothing changed (e.g. "Macao" said twice): no write, no broadcast.
+  if (next === room.deal) return buildState(room, viewer);
   const version = room.version + 1;
   if (!isDealOver(next)) {
     await saveRoom(room, { deal: next });

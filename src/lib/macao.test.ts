@@ -372,6 +372,11 @@ describe("rules", () => {
     expect(normalizeRules({ handSize: 99, twoThreeOn: "x", macao: "yes" })).toEqual(DEFAULT_RULES);
   });
 
+  it("a bad value in a change keeps the room's current value", () => {
+    const seven = updateRules(DEFAULT_RULES, { handSize: 7 });
+    expect(updateRules(seven, { handSize: 99, roundEnd: "last" })).toEqual({ ...seven, roundEnd: "last" });
+  });
+
   it("stop and skip cannot share a rank: a clash switches the skip off, an update swaps them", () => {
     expect(normalizeRules({ stopRank: "A", skipRank: "A" }).skipRank).toBe("none");
     const swapped = updateRules(DEFAULT_RULES, { stopRank: "A" });

@@ -93,12 +93,12 @@ const pick = <T>(value: unknown, allowed: readonly T[], fallback: T): T =>
 const bool = (value: unknown, fallback: boolean) => (typeof value === "boolean" ? value : fallback);
 
 /**
- * Any JSON -> valid Rules (unknown keys dropped, missing / bad values = defaults). Never throws.
+ * Any JSON -> valid Rules (unknown keys dropped, missing / bad values = `fallback`, the defaults). Never throws.
  * The stop and skip card cannot be the same rank: on a clash the skip card is switched off.
  */
-export function normalizeRules(input: unknown): Rules {
+export function normalizeRules(input: unknown, fallback: Rules = DEFAULT_RULES): Rules {
   const o = (input && typeof input === "object" ? input : {}) as Record<string, unknown>;
-  const d = DEFAULT_RULES;
+  const d = fallback;
   const rules: Rules = {
     handSize: pick(o.handSize, HAND_SIZES, d.handSize as (typeof HAND_SIZES)[number]),
     jokers: bool(o.jokers, d.jokers),
@@ -138,7 +138,8 @@ export function updateRules(current: Rules, patch: unknown): Rules {
   } else if (p.skipRank && p.skipRank !== "none" && p.skipRank === current.stopRank) {
     merged.stopRank = current.skipRank === "none" ? "none" : (current.skipRank as StopRank);
   }
-  return normalizeRules(merged);
+  // A bad value in the patch keeps the room's current one (not the default).
+  return normalizeRules(merged, current);
 }
 
 /** Short Romanian lines describing the rules (lobby summary, the in-game "Reguli" box). */
