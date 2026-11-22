@@ -126,8 +126,25 @@ export function normalizeRules(input: unknown, fallback: Rules = DEFAULT_RULES):
     roundEnd: pick<RoundEnd>(o.roundEnd, ["first", "last"], d.roundEnd),
   };
   if (rules.skipRank !== "none" && rules.skipRank === rules.stopRank) rules.skipRank = "none";
+  // "On anything" includes answering a penalty with a stop card of any color.
+  if (rules.stopOnAnything) rules.stopAnySuit = true;
   return rules;
 }
+
+/**
+ * Where the stop card may go, as the one choice shown in the lobby:
+ *  - "any": on any card, always;
+ *  - "penalty": on any color when there are cards to draw (or a turn to sit out, if the stop cancels it), otherwise
+ *    only on the same color or the same number;
+ *  - "match": always only on the same color or the same number (also against cards to draw).
+ */
+export type StopMode = "any" | "penalty" | "match";
+export const stopMode = (r: Pick<Rules, "stopAnySuit" | "stopOnAnything">): StopMode =>
+  r.stopOnAnything ? "any" : r.stopAnySuit ? "penalty" : "match";
+export const stopModeRules = (m: StopMode): Pick<Rules, "stopAnySuit" | "stopOnAnything"> => ({
+  stopAnySuit: m !== "match",
+  stopOnAnything: m === "any",
+});
 
 /** Applies a partial change from the lobby. When the stop card takes the skip card's rank, the two swap. */
 export function updateRules(current: Rules, patch: unknown): Rules {
@@ -163,9 +180,13 @@ export function describeRules(r: Rules): string[] {
   }
   if (r.stopRank !== "none") {
     lines.push(
-      `Stop: ${rankWord(r.stopRank)} ${r.stopAnySuit ? "de orice culoare" : "doar de culoarea cărții de sus"} anulează cărțile de luat${
-        r.stopCancelsSkip ? " și statul o tură" : ""
-      }.${r.stopOnAnything ? " Se poate pune peste orice." : ""}`,
+      `Stop: ${rankWord(r.stopRank)} anulează cărțile de luat${r.stopCancelsSkip ? " și statul o tură" : ""}. Se pune ${
+        stopMode(r) === "any"
+          ? "peste orice carte"
+          : stopMode(r) === "penalty"
+            ? "peste orice culoare când ai de luat" + (r.stopCancelsSkip ? " sau de stat" : "") + ", altfel doar pe aceeași culoare sau același număr"
+            : "doar pe aceeași culoare sau același număr, și când ai de luat"
+      }.`,
     );
   }
   if (r.skipRank !== "none") {

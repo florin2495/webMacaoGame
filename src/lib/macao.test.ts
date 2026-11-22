@@ -30,7 +30,7 @@ import {
   takePenalty,
   topCard,
 } from "./macao";
-import { DEFAULT_RULES, describeRules, normalizeRules, type Rules, updateRules } from "./rules";
+import { DEFAULT_RULES, describeRules, normalizeRules, type Rules, stopMode, stopModeRules, updateRules } from "./rules";
 
 /** Seeded PRNG (mulberry32) for reproducible shuffles. */
 function rng(seed: number) {
@@ -427,6 +427,12 @@ describe("rules", () => {
     const back = updateRules(swapped, { skipRank: "A" });
     expect(back.skipRank).toBe("A");
     expect(back.stopRank).toBe("4");
+  });
+
+  it("the stop card's place is one of three choices", () => {
+    for (const m of ["any", "penalty", "match"] as const) expect(stopMode(normalizeRules({ ...DEFAULT_RULES, ...stopModeRules(m) }))).toBe(m);
+    expect(stopMode(DEFAULT_RULES)).toBe("penalty");
+    expect(normalizeRules({ stopAnySuit: false, stopOnAnything: true }).stopAnySuit).toBe(true);
   });
 
   it("describes every rule set in a few lines", () => {

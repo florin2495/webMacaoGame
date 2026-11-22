@@ -1,7 +1,7 @@
 "use client";
 
 import { type ReactNode, useState } from "react";
-import { HAND_SIZES, JOKER_DRAWS, MACAO_PENALTIES, type Rules, updateRules } from "@/lib/rules";
+import { HAND_SIZES, JOKER_DRAWS, MACAO_PENALTIES, type Rules, type StopMode, stopMode, stopModeRules, updateRules } from "@/lib/rules";
 import { Button, Card, Toggle } from "./ui";
 
 type Option<T> = { value: T; label: string };
@@ -154,10 +154,10 @@ export function RulesPanel({
             </Group>
           )}
 
-          <Group title="Stop" summary={rules.stopRank === "none" ? "fără" : `${rankName(rules.stopRank)}, ${rules.stopAnySuit ? `orice ${rankName(rules.stopRank)} oprește` : "doar de aceeași culoare"}`}>
+          <Group title="Stop" summary={rules.stopRank === "none" ? "fără" : `${rankName(rules.stopRank)}, ${{ any: "peste orice", penalty: "peste orice doar când ai de luat", match: "doar pe culoare" }[stopMode(rules)]}`}>
             <Choice<Rules["stopRank"]>
               testId="rule-stopRank"
-              label="Cartea de stop"
+              label="Cartea de stop (anulează cărțile de luat)"
               value={rules.stopRank}
               options={[
                 { value: "4", label: "4" },
@@ -169,20 +169,27 @@ export function RulesPanel({
             />
             {rules.stopRank !== "none" && (
               <>
-                <Toggle
-                  label={`Orice ${rankName(rules.stopRank)} oprește cărțile de luat`}
-                  hint={`Ex.: peste 2♥ merge și ${rankName(rules.stopRank)}♠. Nebifat: doar ${rankName(rules.stopRank)}♥ (culoarea cărții de sus; pe joker, roșu/negru ca el).`}
-                  checked={rules.stopAnySuit}
+                <Choice<StopMode>
+                  testId="rule-stopMode"
+                  label={`Unde se pune ${rankName(rules.stopRank)}`}
+                  value={stopMode(rules)}
+                  options={[
+                    { value: "penalty", label: "peste orice culoare când ai de luat, altfel doar pe culoarea lui" },
+                    { value: "match", label: "doar pe culoarea lui (sau pe alt " + rankName(rules.stopRank) + "), mereu" },
+                    { value: "any", label: "peste orice carte, mereu" },
+                  ]}
                   disabled={off}
-                  onChange={set("stopAnySuit")}
+                  onChange={(m) => setDraft(updateRules(rules, stopModeRules(m)))}
                 />
-                <Toggle
-                  label={`${rankName(rules.stopRank)} se poate pune peste orice`}
-                  hint="Când nu ai cărți de luat. Nebifat: doar pe aceeași culoare sau același număr."
-                  checked={rules.stopOnAnything}
-                  disabled={off}
-                  onChange={set("stopOnAnything")}
-                />
+                {rules.skipRank !== "none" && (
+                  <Toggle
+                    label={`${rankName(rules.stopRank)} oprește și „stai o tură”`}
+                    hint={`Când ți se dă ${rankName(rules.skipRank)}, poți răspunde cu ${rankName(rules.stopRank)} și nu stai.`}
+                    checked={rules.stopCancelsSkip}
+                    disabled={off}
+                    onChange={set("stopCancelsSkip")}
+                  />
+                )}
               </>
             )}
           </Group>
@@ -204,9 +211,6 @@ export function RulesPanel({
               <>
                 <Toggle label="Se poate pune peste orice" hint="Altfel doar pe aceeași culoare sau același număr." checked={rules.skipOnAnything} disabled={off} onChange={set("skipOnAnything")} />
                 <Toggle label="Se dă mai departe (turele se adună)" hint={`Peste el pui tot ${rules.skipRank === "A" ? "As" : "4"}.`} checked={rules.skipStack} disabled={off} onChange={set("skipStack")} />
-                {rules.stopRank !== "none" && (
-                  <Toggle label="Statul o tură se poate opri cu stop" checked={rules.stopCancelsSkip} disabled={off} onChange={set("stopCancelsSkip")} />
-                )}
               </>
             )}
           </Group>
