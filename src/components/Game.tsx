@@ -307,7 +307,7 @@ function statusText(game: GameView, meId: string, nick: (id: string | null) => s
   }
   if (game.pendingDraw > 0) return `${nick(game.turn)} are de luat ${cardsWord(game.pendingDraw)}…`;
   if (game.pendingSkip > 0) return `${nick(game.turn)} stă o tură, dacă nu dă mai departe…`;
-  return `Așteaptă pe ${nick(game.turn)}${suit}…`;
+  return `Este rândul lui ${nick(game.turn)}${suit}.`;
 }
 
 /** The pile (last cards, top one on the right), the stock and what is running (cards to draw, skip, chosen suit). */
