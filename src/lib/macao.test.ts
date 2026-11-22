@@ -183,6 +183,15 @@ describe("cards to draw", () => {
     expect(d.turn).toBe("b");
   });
 
+  it("you may take the cards / sit out even when you hold a stop card", () => {
+    const pen = make({ a: ["4H", "2S"], b: ["9C"] }, ["5H", "2H"], { stopCancelsSkip: true }, { pendingDraw: 2 });
+    expect(legalCards(pen, "a").sort()).toEqual(["2S", "4H"]);
+    expect(takePenalty(pen, "a").hands.a).toHaveLength(4);
+    const skip = make({ a: ["4H", "AS"], b: ["9C"] }, ["5H", "AH"], { stopCancelsSkip: true }, { pendingSkip: 1 });
+    expect(legalCards(skip, "a").sort()).toEqual(["4H", "AS"]);
+    expect(sitOutTurn(skip, "a").turn).toBe("b");
+  });
+
   it("the change-suit card cannot dodge cards to draw", () => {
     const d = make({ a: ["7H", "8H"], b: ["9C"] }, ["5H", "2H"], {}, { pendingDraw: 2 });
     expect(legalCards(d, "a")).toEqual([]);
