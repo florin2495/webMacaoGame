@@ -388,7 +388,7 @@ export function playCards(input: Deal, playerId: string, cards: Card[], suit?: S
   if (problem) throw new RuleError(problem);
   const r = input.rules;
   const kind = kindOf(ordered[0], r);
-  if (kind === "change" && !isSuit(suit)) throw new RuleError("Alege suita.");
+  if (kind === "change" && !isSuit(suit)) throw new RuleError("Alege culoarea.");
 
   const deal = clone(input);
   deal.hands[playerId] = deal.hands[playerId].filter((c) => !ordered.includes(c));
@@ -605,7 +605,7 @@ export function roundLeader(order: string[], round: number): string {
 }
 
 export const SUIT_SYMBOL: Record<Suit, string> = { S: "♠", H: "♥", D: "♦", C: "♣" };
-export const SUIT_NAME: Record<Suit, string> = { S: "pică", H: "inimă roșie", D: "romb", C: "treflă" };
+export const SUIT_NAME: Record<Suit, string> = { S: "frunză", H: "inimă roșie", D: "romb", C: "treflă" };
 
 /** "7♥", "joker colorat". */
 export function cardLabel(card: Card): string {

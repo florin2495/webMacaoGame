@@ -161,7 +161,7 @@ export function Home() {
             />
           )}
           {tab === "create" && (
-            <p className="text-xs text-zinc-500">Regulile casei (2 și 3, jokeri, stop, stai o tură, schimbat suita, Macao…) le alegi în lobby, înainte să împarți.</p>
+            <p className="text-xs text-zinc-500">Regulile casei (2 și 3, jokeri, stop, stai o tură, schimbat culoarea, Macao…) le alegi în lobby, înainte să împarți.</p>
           )}
 
           <ErrorText>{error}</ErrorText>
@@ -236,7 +236,7 @@ export function Rules({ rules = DEFAULT_RULES, title = "Reguli" }: { rules?: Rul
     <details className="text-sm text-zinc-600 dark:text-zinc-400">
       <summary className="cursor-pointer font-semibold">{title}</summary>
       <ol className="mt-2 list-decimal space-y-1 pl-5">
-        <li>Pui o carte de aceeași suită sau același număr cu cea de sus, ori tragi una din pachet.</li>
+        <li>Pui o carte de aceeași culoare (inimă, romb, treflă, frunză) sau același număr cu cea de sus, ori tragi una din pachet.</li>
         {describeRules(rules).map((line) => (
           <li key={line}>{line}</li>
         ))}

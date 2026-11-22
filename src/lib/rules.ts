@@ -151,19 +151,19 @@ export function describeRules(r: Rules): string[] {
   );
   lines.push(
     `2 și 3 se pun ${
-      r.twoThreeOn === "any" ? "peste orice" : r.twoThreeOn === "color" ? "pe aceeași culoare (roșu/negru) sau același număr" : "pe aceeași suită sau același număr"
+      r.twoThreeOn === "any" ? "peste orice" : r.twoThreeOn === "color" ? "roșu pe roșu, negru pe negru sau același număr" : "pe aceeași culoare sau același număr"
     }. ${r.mixTwoThree ? "Peste 2 poți da 3 și invers." : "Peste 2 doar 2, peste 3 doar 3."}`,
   );
   if (r.jokers) {
     lines.push(
       `Jokerul se pune ${r.jokerOn === "any" ? "peste orice" : "colorat pe roșu (♥♦), negru pe negru (♠♣)"}${
         r.jokerStack ? "; se adună cu 2 și 3" : "; nu se adună cu 2 și 3"
-      }. După joker: ${r.anyOnJoker ? "orice carte" : "culoarea jokerului"}.`,
+      }. După joker: ${r.anyOnJoker ? "orice carte" : "roșu/negru ca jokerul"}.`,
     );
   }
   if (r.stopRank !== "none") {
     lines.push(
-      `Stop: ${rankWord(r.stopRank)} ${r.stopAnySuit ? "de orice suită" : "doar de suita cărții de sus"} anulează cărțile de luat${
+      `Stop: ${rankWord(r.stopRank)} ${r.stopAnySuit ? "de orice culoare" : "doar de culoarea cărții de sus"} anulează cărțile de luat${
         r.stopCancelsSkip ? " și statul o tură" : ""
       }.${r.stopOnAnything ? " Se poate pune peste orice." : ""}`,
     );
@@ -177,7 +177,7 @@ export function describeRules(r: Rules): string[] {
   }
   if (r.changeRank !== "none") {
     lines.push(
-      `${rankWord(r.changeRank)} schimbă suita${r.changeOnAnything ? " și se pune peste orice" : ""} (nu când ai cărți de luat).`,
+      `${rankWord(r.changeRank)} schimbă culoarea${r.changeOnAnything ? " și se pune peste orice" : ""} (nu când ai cărți de luat).`,
     );
   }
   if (r.multiPlay) lines.push("Poți pune deodată mai multe cărți de același număr.");

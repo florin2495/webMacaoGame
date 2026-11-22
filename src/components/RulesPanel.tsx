@@ -116,14 +116,14 @@ export function RulesPanel({
             <Toggle label="Cu jokeri (negru și colorat)" checked={rules.jokers} disabled={off} onChange={set("jokers")} />
           </Group>
 
-          <Group title="2 și 3" summary={`${rules.twoThreeOn === "any" ? "peste orice" : rules.twoThreeOn === "color" ? "pe culoare" : "pe suită"}, 2↔3 ${onOff(rules.mixTwoThree)}`}>
+          <Group title="2 și 3" summary={`${rules.twoThreeOn === "any" ? "peste orice" : rules.twoThreeOn === "color" ? "roșu/negru" : "pe culoare"}, 2↔3 ${onOff(rules.mixTwoThree)}`}>
             <Choice<Rules["twoThreeOn"]>
               testId="rule-twoThreeOn"
               label="2 și 3 se pun"
               value={rules.twoThreeOn}
               options={[
-                { value: "suit", label: "pe aceeași suită sau același număr" },
-                { value: "color", label: "pe aceeași culoare (roșu / negru)" },
+                { value: "suit", label: "pe aceeași culoare sau același număr" },
+                { value: "color", label: "roșu pe roșu, negru pe negru (sau același număr)" },
                 { value: "any", label: "peste orice carte" },
               ]}
               disabled={off}
@@ -133,7 +133,7 @@ export function RulesPanel({
           </Group>
 
           {rules.jokers && (
-            <Group title="Jokeri" summary={`+${rules.jokerBlackDraw} / +${rules.jokerRedDraw}, ${rules.jokerOn === "any" ? "peste orice" : "pe culoare"}`}>
+            <Group title="Jokeri" summary={`+${rules.jokerBlackDraw} / +${rules.jokerRedDraw}, ${rules.jokerOn === "any" ? "peste orice" : "roșu/negru"}`}>
               <div className="grid grid-cols-2 gap-2">
                 <Choice testId="rule-jokerBlackDraw" label="Joker negru: iei" value={rules.jokerBlackDraw} options={nums(JOKER_DRAWS, cards)} disabled={off} onChange={set("jokerBlackDraw")} />
                 <Choice testId="rule-jokerRedDraw" label="Joker colorat: iei" value={rules.jokerRedDraw} options={nums(JOKER_DRAWS, cards)} disabled={off} onChange={set("jokerRedDraw")} />
@@ -150,11 +150,11 @@ export function RulesPanel({
                 onChange={set("jokerOn")}
               />
               <Toggle label="Jokerul se adună cu 2 și 3" hint="Joker peste 2 / 3 și 2 / 3 peste joker." checked={rules.jokerStack} disabled={off} onChange={set("jokerStack")} />
-              <Toggle label="Peste joker se poate da orice" hint="Altfel doar culoarea jokerului." checked={rules.anyOnJoker} disabled={off} onChange={set("anyOnJoker")} />
+              <Toggle label="Peste joker se poate da orice" hint="Altfel doar roșu pe jokerul colorat, negru pe cel negru." checked={rules.anyOnJoker} disabled={off} onChange={set("anyOnJoker")} />
             </Group>
           )}
 
-          <Group title="Stop" summary={rules.stopRank === "none" ? "fără" : `${rankName(rules.stopRank)}, ${rules.stopAnySuit ? `orice ${rankName(rules.stopRank)} oprește` : "doar de aceeași suită"}`}>
+          <Group title="Stop" summary={rules.stopRank === "none" ? "fără" : `${rankName(rules.stopRank)}, ${rules.stopAnySuit ? `orice ${rankName(rules.stopRank)} oprește` : "doar de aceeași culoare"}`}>
             <Choice<Rules["stopRank"]>
               testId="rule-stopRank"
               label="Cartea de stop"
@@ -171,14 +171,14 @@ export function RulesPanel({
               <>
                 <Toggle
                   label={`Orice ${rankName(rules.stopRank)} oprește cărțile de luat`}
-                  hint={`Ex.: peste 2♥ merge și ${rankName(rules.stopRank)}♠. Nebifat: doar ${rankName(rules.stopRank)}♥ (suita cărții de sus; pe joker, culoarea lui).`}
+                  hint={`Ex.: peste 2♥ merge și ${rankName(rules.stopRank)}♠. Nebifat: doar ${rankName(rules.stopRank)}♥ (culoarea cărții de sus; pe joker, roșu/negru ca el).`}
                   checked={rules.stopAnySuit}
                   disabled={off}
                   onChange={set("stopAnySuit")}
                 />
                 <Toggle
                   label={`${rankName(rules.stopRank)} se poate pune peste orice`}
-                  hint="Când nu ai cărți de luat. Nebifat: doar pe aceeași suită sau același număr."
+                  hint="Când nu ai cărți de luat. Nebifat: doar pe aceeași culoare sau același număr."
                   checked={rules.stopOnAnything}
                   disabled={off}
                   onChange={set("stopOnAnything")}
@@ -202,7 +202,7 @@ export function RulesPanel({
             />
             {rules.skipRank !== "none" && (
               <>
-                <Toggle label="Se poate pune peste orice" hint="Altfel doar pe suită / număr." checked={rules.skipOnAnything} disabled={off} onChange={set("skipOnAnything")} />
+                <Toggle label="Se poate pune peste orice" hint="Altfel doar pe aceeași culoare sau același număr." checked={rules.skipOnAnything} disabled={off} onChange={set("skipOnAnything")} />
                 <Toggle label="Se dă mai departe (turele se adună)" hint={`Peste el pui tot ${rules.skipRank === "A" ? "As" : "4"}.`} checked={rules.skipStack} disabled={off} onChange={set("skipStack")} />
                 {rules.stopRank !== "none" && (
                   <Toggle label="Statul o tură se poate opri cu stop" checked={rules.stopCancelsSkip} disabled={off} onChange={set("stopCancelsSkip")} />
@@ -211,10 +211,10 @@ export function RulesPanel({
             )}
           </Group>
 
-          <Group title="Schimbă suita" summary={rules.changeRank === "none" ? "fără" : `${rankName(rules.changeRank)}${rules.changeOnAnything ? ", peste orice" : ""}`}>
+          <Group title="Schimbă culoarea" summary={rules.changeRank === "none" ? "fără" : `${rankName(rules.changeRank)}${rules.changeOnAnything ? ", peste orice" : ""}`}>
             <Choice<Rules["changeRank"]>
               testId="rule-changeRank"
-              label="Cartea care schimbă suita"
+              label="Cartea care schimbă culoarea"
               value={rules.changeRank}
               options={[
                 { value: "7", label: "7" },

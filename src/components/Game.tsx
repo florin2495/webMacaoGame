@@ -233,7 +233,7 @@ export function Game({
             )}
             {askSuit && (
               <div className="mt-2 flex flex-col gap-2" data-testid="suit-picker">
-                <p className="text-center text-sm font-semibold">Ce suită ceri?</p>
+                <p className="text-center text-sm font-semibold">Ce culoare ceri?</p>
                 <div className="grid grid-cols-4 gap-2">
                   {SUITS.map((s) => (
                     <button

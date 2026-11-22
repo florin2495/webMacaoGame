@@ -124,7 +124,7 @@ describe("matching", () => {
     const d = make({ a: ["7S", "KD"], b: ["9C", "9H", "7H"] }, ["5H"]);
     expect(legalCards(d, "a")).toEqual(["7S"]);
     expect(legalCards(make({ a: ["7S"], b: ["9C"] }, ["5H"], { changeOnAnything: false }), "a")).toEqual([]);
-    expect(() => playCards(d, "a", ["7S"])).toThrow("Alege suita");
+    expect(() => playCards(d, "a", ["7S"])).toThrow("Alege culoarea");
     const next = playCards(d, "a", ["7S"], "C");
     expect(next.suit).toBe("C");
     expect(next.turn).toBe("b");
