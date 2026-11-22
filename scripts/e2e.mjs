@@ -575,14 +575,20 @@ async function main() {
   const dState = (await call(`/api/rooms/${code}/state`, { token: D.token })).data;
   check(dState.game.hand.length === 4 && dState.me.role === "player" && dState.me.wins === 0 && dState.me.score === 0, "Dan is a player now: has a hand, wins and score 0");
 
-  console.log("Leave mid-deal");
-  const tally = (players) => JSON.stringify(players.map((p) => [p.id, p.wins, p.score]).sort());
-  const scoresBefore = tally(s.players.filter((p) => p.id !== C.playerId));
+  console.log("Leave mid-deal: the round goes on without the player");
+  const beforeLeave = s.game;
   check((await P("leave", C)).status === 200, "Cris leaves");
   s = (await call(`/api/rooms/${code}/state`, { token: A.token })).data;
-  check(s.room.status === "finished" && s.result?.aborted?.nickname === "Cris" && s.result.winner === null, "deal cancelled, no winner");
-  check(tally(s.players) === scoresBefore, "a cancelled deal changes no wins or score");
+  check(
+    s.room.status === "playing" && s.players.length === 3 && s.game.order.length === 3 && !s.game.order.includes(C.playerId),
+    "the deal goes on with 3 players",
+  );
+  check(s.game.stockCount === beforeLeave.stockCount + beforeLeave.handCounts[C.playerId], "Cris's cards went under the stock");
+  check(s.game.turn !== C.playerId && s.game.order.includes(s.game.turn), "the turn is on a player still at the table");
+  check(s.game.log.at(-1)?.type === "left", "the log says a player left");
   check((await call(`/api/rooms/${code}/state`, { token: C.token })).status === 401, "Cris's token no longer works");
+  const seated = { [A.playerId]: A, [B.playerId]: B, [D.playerId]: D };
+  await playDeal(code, s.game.order.map((id) => seated[id]), { maxMoves: 300, noSuitTested: true });
 
   console.log("Back to lobby, round end 'last' (3 players)");
   check((await P("lobby", A)).status === 200, "host back to lobby");

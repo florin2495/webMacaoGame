@@ -16,7 +16,10 @@ can be stopped), change-suit card (7 / J / none, on anything), several same-rank
 finish on a special card, Macao + penalty, round end (first out / until one is left). Stop and skip never share a rank.
 - "Macao" and "Contra-Macao" are two small, low-key buttons (user: they must not catch the eye). Macao can be said
   with at most two cards; Contra-Macao catches everyone left with one card who did not say it.
-- Putting the last two equal cards down at once finishes without saying Macao (user's requirement).
+- Putting the last 2, 3 or 4 equal cards down at once finishes without saying Macao (user's requirement).
+- A player who leaves or is kicked during a round (host kick: pending 10 s, "Ignoră") is removed from the deal and the
+  round goes on without them (cards under the stock, their penalty dropped, turn passes on); below 2 players it is
+  cancelled (user's requirement). An empty stock is refilled by shuffling every played card except the top one.
 
 ## Accounts and deploy
 - GitHub: personal account **florin2495** only (repo `florin2495/webMacaoGame`, public). Never the work account.
