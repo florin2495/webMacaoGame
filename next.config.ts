@@ -1,0 +1,22 @@
+import type { NextConfig } from "next";
+import pkg from "./package.json";
+
+const nextConfig: NextConfig = {
+  // Shown next to "Setări". Bump package.json "version" (patch) on every push to main.
+  // Served under games.hailatat.icu/macao (the hub proxies this path here; Next.js multi-zones).
+  basePath: "/macao",
+  env: { NEXT_PUBLIC_APP_VERSION: pkg.version, NEXT_PUBLIC_BASE_PATH: "/macao" },
+  /* config options here */
+  cacheComponents: true,
+  partialPrefetching: true,
+  turbopack: {
+    rules: {
+      "*.css": {
+        loaders: ["@tailwindcss/turbopack"],
+        as: "*.css",
+      },
+    },
+  },
+};
+
+export default nextConfig;
