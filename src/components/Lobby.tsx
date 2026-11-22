@@ -104,7 +104,7 @@ export function Lobby({
         </Card>
       )}
 
-      <RulesPanel rules={room.rules} editable={isHost} busy={busy !== null} onChange={(patch) => void run("settings", { rules: patch })} />
+      <RulesPanel rules={room.rules} editable={isHost} busy={busy !== null} onSave={(rules) => run("settings", { rules })} />
 
       <Card className="flex flex-col gap-3">
         <Button

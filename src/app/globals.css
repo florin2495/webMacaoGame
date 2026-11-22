@@ -31,3 +31,14 @@ body {
   font-family: var(--font-geist-sans), system-ui, sans-serif;
   -webkit-tap-highlight-color: transparent;
 }
+
+/* Custom disclosure arrows: hide the native marker (iOS Safari still draws it with list-style: none). */
+summary.list-none {
+  list-style: none;
+}
+summary.list-none::-webkit-details-marker {
+  display: none;
+}
+summary.list-none::marker {
+  content: "";
+}

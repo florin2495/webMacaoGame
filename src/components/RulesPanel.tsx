@@ -1,8 +1,8 @@
 "use client";
 
-import type { ReactNode } from "react";
-import { HAND_SIZES, JOKER_DRAWS, MACAO_PENALTIES, type Rules } from "@/lib/rules";
-import { Card, Toggle } from "./ui";
+import { type ReactNode, useState } from "react";
+import { HAND_SIZES, JOKER_DRAWS, MACAO_PENALTIES, type Rules, updateRules } from "@/lib/rules";
+import { Button, Card, Toggle } from "./ui";
 
 type Option<T> = { value: T; label: string };
 
@@ -51,14 +51,17 @@ function Choice<T extends string | number>({
 function Group({ title, summary, children }: { title: string; summary: string; children: ReactNode }) {
   return (
     <details className="group/sec border-t border-zinc-200 dark:border-zinc-800">
-      <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-2 py-1">
-        <span className="flex shrink-0 items-center gap-2 text-sm font-semibold">
-          <span className="text-[10px] text-zinc-400 transition-transform group-open/sec:rotate-90">▶</span>
-          {title}
+      {/* Block summary with an inner flex row: iOS Safari does not lay out <summary> itself as flex. */}
+      <summary className="block min-h-11 cursor-pointer list-none py-2 text-left">
+        <span className="flex items-start gap-2">
+          <span className="mt-1 w-3 shrink-0 text-[10px] text-zinc-400 transition-transform group-open/sec:rotate-90">▶</span>
+          <span className="min-w-0">
+            <span className="block text-sm font-semibold">{title}</span>
+            <span className="block truncate text-xs text-zinc-500">{summary}</span>
+          </span>
         </span>
-        <span className="min-w-0 truncate text-right text-xs text-zinc-500">{summary}</span>
       </summary>
-      <div className="flex flex-col gap-2 pb-3 pl-5">{children}</div>
+      <div className="flex flex-col gap-2 pb-3 text-left">{children}</div>
     </details>
   );
 }
@@ -70,37 +73,43 @@ const nums = (list: readonly number[], unit: (n: number) => string): Option<numb
 const cards = (n: number) => `${n} ${n === 1 ? "carte" : "cărți"}`;
 
 /**
- * House rules of the room. The host edits them in the lobby (each change is saved at once and resets
- * everyone's "ready"); the others see them read-only.
+ * House rules of the room. The host edits a local draft in the lobby (no request per tick) and sends it with
+ * "Salvează regulile" (that resets everyone's "ready"); the others see the saved rules read-only.
  */
 export function RulesPanel({
-  rules,
+  rules: saved,
   editable,
   busy,
-  onChange,
+  onSave,
 }: {
   rules: Rules;
   editable: boolean;
   busy: boolean;
-  onChange: (patch: Partial<Rules>) => void;
+  onSave: (rules: Rules) => Promise<void>;
 }) {
+  const [draft, setDraft] = useState<Rules | null>(null);
+  const rules = editable && draft ? draft : saved;
+  const dirty = editable && draft !== null && JSON.stringify(draft) !== JSON.stringify(saved);
   const off = !editable || busy;
-  const set = <K extends keyof Rules>(key: K) => (value: Rules[K]) => onChange({ [key]: value } as Partial<Rules>);
+  const set = <K extends keyof Rules>(key: K) => (value: Rules[K]) =>
+    setDraft(updateRules(rules, { [key]: value } as Partial<Rules>));
 
   return (
     <Card className="py-2" data-testid="rules-panel">
       <details className="group/rules">
-        <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-2">
-          <span className="flex shrink-0 items-center gap-2 font-bold">
-            <span className="text-xs transition-transform group-open/rules:rotate-90">▶</span>
-            Regulile camerei
-          </span>
-          <span className="min-w-0 truncate text-right text-xs text-zinc-500">
-            {editable ? "apasă ca să le schimbi" : "le alege host-ul"}
+        <summary className="block min-h-11 cursor-pointer list-none py-1 text-left">
+          <span className="flex items-start gap-2">
+            <span className="mt-1 w-3 shrink-0 text-xs transition-transform group-open/rules:rotate-90">▶</span>
+            <span className="min-w-0">
+              <span className="block font-bold">Regulile camerei</span>
+              <span className="block text-xs text-zinc-500">
+                {dirty ? "modificări nesalvate" : editable ? "apasă ca să le schimbi" : "le alege host-ul"}
+              </span>
+            </span>
           </span>
         </summary>
-        <div className="flex flex-col pb-1 pt-1">
-          {editable && <p className="pb-2 text-xs text-zinc-500">Orice schimbare resetează „gata” la toți.</p>}
+        <div className="flex flex-col pb-1 pt-1 text-left">
+          {editable && <p className="pb-2 text-xs text-zinc-500">Alegi tot ce vrei, apoi „Salvează regulile”. Salvarea resetează „gata” la toți.</p>}
 
           <Group title="Împărțire" summary={`${cards(rules.handSize)}, ${rules.jokers ? "cu jokeri" : "fără jokeri"}`}>
             <Choice testId="rule-handSize" label="Cărți de jucător" value={rules.handSize} options={nums(HAND_SIZES, cards)} disabled={off} onChange={set("handSize")} />
@@ -228,6 +237,22 @@ export function RulesPanel({
               onChange={set("roundEnd")}
             />
           </Group>
+          {editable && (
+            <div className="grid grid-cols-2 gap-2 border-t border-zinc-200 pt-3 dark:border-zinc-800">
+              <Button
+                disabled={!dirty || busy}
+                data-testid="save-rules"
+                onClick={() => {
+                  if (draft) void onSave(draft);
+                }}
+              >
+                {busy ? "Se salvează…" : "Salvează regulile"}
+              </Button>
+              <Button variant="secondary" disabled={!dirty || busy} onClick={() => setDraft(null)}>
+                Renunță
+              </Button>
+            </div>
+          )}
         </div>
       </details>
     </Card>
