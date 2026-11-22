@@ -390,7 +390,7 @@ async function main() {
   check(!!B.token && !!C.token, "Bob and Cris joined");
   check((await call(`/api/rooms/${code}/join`, { body: { nickname: "bob", password: "pw", deviceId: dev.D } })).status === 409, "nickname of a connected seat from another device = 409");
   check((await call(`/api/rooms/${code}/join`, { body: { nickname: "x".repeat(13), password: "pw" } })).status === 400, "13-char nickname = 400");
-  const list = await call("/api/rooms");
+  const list = await call("/api/rooms?tests=1");
   const item = list.data.rooms?.find((x) => x.code === code);
   check(item?.hasPassword && item.players === 3 && item.status === "lobby" && item.spectators === 0, "room in public list: lobby, with password, 3 players, 0 spectators");
   check(!!item && !("teams" in item), "list item has no teams field");
@@ -503,7 +503,7 @@ async function main() {
   check(sp.me?.role === "spectator" && sp.game.hand.length === 0 && sp.game.legal.length === 0 && !sp.game.canDraw, "spectator has no hand and no legal cards");
   check(!/"(hands|stock|discard|deal|token_hash|device_hash)"/.test(JSON.stringify(sp)) && sp.game.stockCount === s.game.stockCount, "spectator state leaks nothing private");
   check(sp.players.length === 3 && sp.spectators.length === 1, "spectator not counted among the players");
-  const list2 = await call("/api/rooms");
+  const list2 = await call("/api/rooms?tests=1");
   check(
     list2.data.rooms?.some((x) => x.code === code && x.status === "playing" && x.players === 3 && x.spectators === 1),
     "running room still listed: status playing, 3 players, 1 spectator",

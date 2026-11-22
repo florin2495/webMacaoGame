@@ -138,7 +138,8 @@ export type LogEntry =
   | { type: "macao"; playerId: string }
   | { type: "caught"; playerId: string; by: string; count: number }
   | { type: "out"; playerId: string; place: number }
-  | { type: "left"; playerId: string };
+  | { type: "left"; playerId: string }
+  | { type: "timeout"; playerId: string };
 
 /** One deal (round) in progress. Stored as JSON on the room; hands never leave the server. */
 export interface Deal {
@@ -169,6 +170,8 @@ export interface Deal {
   /** Last events, newest last (max LOG_SIZE). */
   log: LogEntry[];
   moves: number;
+  /** Epoch ms when the current turn started (turn timer). Set by the server; missing on old deals = no timer. */
+  turnSince?: number;
 }
 
 export const LOG_SIZE = 12;
@@ -527,6 +530,13 @@ export function removeFromDeal(input: Deal, playerId: string): Deal {
     advance(deal, prev === playerId ? deal.order[deal.order.length - 1] : prev);
   }
   return deal;
+}
+
+/** The turn timer ran out: logged, then the turn is played automatically (see autoMove). */
+export function timeoutMove(input: Deal, playerId: string): Deal {
+  const marked = clone(input);
+  pushLog(marked, { type: "timeout", playerId });
+  return autoMove(marked, playerId);
 }
 
 /** Suit `playerId` holds most of (for automatic moves). */

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { PREF_CONFIRM_PLAY, useBoolPref } from "@/lib/client/prefs";
 import {
   type Card as CardT,
@@ -58,6 +58,22 @@ export function Game({
 
   const byId = new Map([...players, ...state.spectators].map((p) => [p.id, p]));
   const nick = (id: string | null | undefined) => (id ? (byId.get(id)?.nickname ?? "cineva") : "cineva");
+
+  // Turn timer (server clock; phones and Vercel are NTP-synced, a second of skew does not matter here).
+  const deadline = game?.turnDeadline ?? null;
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    if (deadline === null) return;
+    const tick = window.setInterval(() => setNow(Date.now()), 1000);
+    // Shortly after the deadline ask for fresh state: that request makes the server play the late turn.
+    const late = window.setTimeout(() => void refresh(), Math.max(0, deadline - Date.now()) + 2500);
+    const later = window.setTimeout(() => void refresh(), Math.max(0, deadline - Date.now()) + 8000);
+    return () => {
+      window.clearInterval(tick);
+      window.clearTimeout(late);
+      window.clearTimeout(later);
+    };
+  }, [deadline, refresh]);
 
   // A new move on the server clears any half-made selection.
   if (game && game.moves !== moveSeen) {
@@ -124,6 +140,7 @@ export function Game({
   }
 
   const status = statusText(game, me.id, nick, finished);
+  const secondsLeft = deadline !== null ? Math.max(0, Math.ceil((deadline - now) / 1000)) : null;
   const isSpectator = me.role === "spectator";
   const anchorIdx = Math.max(game.order.indexOf(isSpectator ? game.order[0] : me.id), 0);
   const n = game.order.length;
@@ -210,6 +227,14 @@ export function Game({
           data-testid="game-status"
         >
           {status}
+          {secondsLeft !== null && (
+            <span
+              className={`ml-2 rounded-full px-2 py-0.5 text-xs tabular-nums ${myTurn && secondsLeft <= 10 ? "bg-rose-600 text-white" : "bg-zinc-200 text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300"}`}
+              data-testid="turn-timer"
+            >
+              ⏱ {secondsLeft} s
+            </span>
+          )}
         </p>
 
         {myTurn && (game.canTake || game.canSit || game.canPass || game.canDraw) && (
@@ -391,6 +416,8 @@ function Seat({
   onSkip: () => void;
 }) {
   const shown = Math.min(count, 7);
+  // Host tools ("Scoate", "Joacă pentru el") stay behind "⋯", so a stray tap cannot reach them.
+  const [menu, setMenu] = useState(false);
   return (
     <div
       data-testid="seat"
@@ -421,7 +448,19 @@ function Seat({
         ))}
         <span className="ml-1 text-xs font-bold text-zinc-500">{count === 0 ? "fără cărți" : count}</span>
       </span>
-      {canKick && player && player.kickRemainingMs === null && (
+      {(canSkip || (canKick && player && player.kickRemainingMs === null)) && (
+        <button
+          type="button"
+          onClick={() => setMenu(!menu)}
+          className="min-h-7 min-w-8 rounded-md border border-zinc-300 px-2 text-sm font-bold leading-none text-zinc-500 dark:border-zinc-700"
+          aria-label={`Opțiuni pentru ${player?.nickname ?? "jucător"}`}
+          aria-expanded={menu}
+          data-testid="seat-menu"
+        >
+          ⋯
+        </button>
+      )}
+      {menu && canKick && player && player.kickRemainingMs === null && (
         <button
           type="button"
           disabled={busy}
@@ -432,7 +471,7 @@ function Seat({
           Scoate
         </button>
       )}
-      {canSkip && (
+      {menu && canSkip && (
         <button
           type="button"
           disabled={busy}
@@ -466,6 +505,8 @@ function logText(e: LogEntry, nick: (id: string) => string): string {
       return `${nick(e.by)} l-a prins pe ${nick(e.playerId)} fără „Macao”: ia ${cardsWord(e.count)}`;
     case "out":
       return `${nick(e.playerId)} a terminat cărțile (locul ${e.place})`;
+    case "timeout":
+      return `${nick(e.playerId)} n-a mutat la timp: se joacă automat`;
     case "left":
       return "Un jucător a ieșit din cameră; runda continuă fără el";
   }

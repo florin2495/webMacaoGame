@@ -1,5 +1,5 @@
 import { connection } from "next/server";
-import { NICKNAME_MAX } from "@/lib/macao";
+import { isTestRoom, NICKNAME_MAX } from "@/lib/macao";
 import { DEFAULT_RULES } from "@/lib/rules";
 import { hashDeviceId, hashPassword, hashToken, newPlayerToken, newRoomCode } from "@/lib/server/crypto";
 import { db, T } from "@/lib/server/db";
@@ -10,7 +10,7 @@ import type { RoomListItem } from "@/lib/types";
 // GET /api/rooms - public list of all live rooms (lobby, in-game and finished; idle ones are cleaned up first).
 // Joining a room that is not in the lobby makes you a spectator.
 // Loading the list ("Intră în cameră") first sweeps abandoned rooms: no member seen and no activity for 600 s.
-export async function GET() {
+export async function GET(req: Request) {
   await connection(); // always request-time, never prerendered at build
   return handle(async () => {
     await Promise.all([cleanupExpiredRooms(), cleanupAbandonedRooms()]);
@@ -20,7 +20,9 @@ export async function GET() {
       .order("last_activity_at", { ascending: false })
       .limit(50);
     if (error) throw error;
-    const rooms: RoomListItem[] = (data ?? []).map((r) => {
+    // Rooms of the automated tests (e2e-test-…) stay out of the public list; the e2e script asks with ?tests=1.
+    const withTests = new URL(req.url).searchParams.get("tests") === "1";
+    const rooms: RoomListItem[] = (data ?? []).filter((r) => withTests || !isTestRoom(r.name)).map((r) => {
       const members = (r.players ?? []) as unknown as { role: "player" | "spectator" }[];
       const seated = members.filter((m) => m.role === "player").length;
       return {

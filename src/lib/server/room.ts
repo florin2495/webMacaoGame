@@ -8,6 +8,7 @@ import {
   isTestRoom,
   legalCards,
   ROOM_ABANDONED_MS,
+  timeoutMove,
   ROOM_IDLE_MINUTES,
   RuleError,
   standings,
@@ -98,6 +99,7 @@ export async function requireMember(
   let room = await getRoomByCode(code);
   // Lazy enforcement of expired pending kicks (no timers on serverless); may remove the caller -> 401 below.
   if (await enforceExpiredKicks(room)) room = await getRoomByCode(code);
+  if (await enforceTurnTimer(room)) room = await getRoomByCode(code);
   const { data, error } = await db()
     .from(T.players)
     .select(PLAYER_COLUMNS)
@@ -139,6 +141,29 @@ async function takeOverFromOfflineHost(room: RoomRow, player: PlayerRow): Promis
   if (e2) throw e2;
   await notifyRoom(room.id, "host_changed", version);
   return { ...room, host_player_id: player.id, version };
+}
+
+/** Extra time after the deadline before the server plays the turn (clocks and network). */
+export const TURN_GRACE_MS = 1_500;
+
+/**
+ * Lazy turn timer (serverless: no timers). Runs from requireMember, i.e. on every /state poll and room action:
+ * when the player on turn has been on it longer than rules.turnSeconds (+ grace), the turn is played for them.
+ * Concurrent requests race on the version check; the losers just carry on. Returns true when a move was made.
+ */
+async function enforceTurnTimer(room: RoomRow): Promise<boolean> {
+  const deal = room.deal;
+  if (room.status !== "playing" || !deal || deal.turnSince === undefined || isDealOver(deal)) return false;
+  const seconds = deal.rules.turnSeconds ?? 0;
+  if (seconds <= 0 || Date.now() - deal.turnSince < seconds * 1000 + TURN_GRACE_MS) return false;
+  const { data: onTurn } = await db().from(T.players).select(PLAYER_COLUMNS).eq("id", deal.turn).maybeSingle();
+  if (!onTurn) return false;
+  try {
+    await applyMove(room, (d) => timeoutMove(d, d.turn), "turn_timeout", onTurn as PlayerRow, deal.turn);
+    return true;
+  } catch {
+    return false; // somebody else moved first (409) - fine
+  }
 }
 
 /** Presence heartbeat: stamps last_seen_at at most every LAST_SEEN_TOUCH_MS. Best effort, never throws. */
@@ -222,6 +247,8 @@ export async function applyMove(
   move: (deal: Deal) => Deal,
   reason: string,
   viewer: PlayerRow,
+  /** Whose action this is (default the caller; the turn timer acts for the player on turn). */
+  actorId: string = viewer.id,
 ): Promise<RoomState> {
   if (room.status !== "playing" || !room.deal) fail(409, "Nu se joacă acum.");
   let next: Deal;
@@ -233,6 +260,9 @@ export async function applyMove(
   }
   // Nothing changed (e.g. "Macao" said twice): no write, no broadcast.
   if (next === room.deal) return buildState(room, viewer);
+  // The turn timer restarts when the turn moves on or the player on turn acts (e.g. drew a card that fits).
+  if (next.turn !== room.deal.turn || actorId === room.deal.turn) next.turnSince = Date.now();
+  else next.turnSince = room.deal.turnSince;
   const version = room.version + 1;
   if (!isDealOver(next)) {
     await saveRoom(room, { deal: next });
@@ -324,6 +354,9 @@ function gameView(deal: Deal, meId: string, finished: boolean): GameView {
     canPass: myTurn && deal.drawn !== null,
     canTake: myTurn && deal.pendingDraw > 0,
     canSit: myTurn && deal.pendingSkip > 0,
+    turnDeadline:
+      !finished && deal.turnSince !== undefined && (deal.rules.turnSeconds ?? 0) > 0 ? deal.turnSince + deal.rules.turnSeconds * 1000 : null,
+    serverNow: Date.now(),
   };
 }
 

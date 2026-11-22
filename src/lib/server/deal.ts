@@ -16,7 +16,7 @@ export async function startDeal(room: RoomRow, round: number, requireReady: bool
     if (notReady.length > 0) fail(409, `Nu sunt toți gata: ${notReady.map((p) => p.nickname).join(", ")}.`);
   }
   const order = players.map((p) => p.id);
-  const deal = newDeal(order, roundLeader(order, round), normalizeRules(room.rules));
+  const deal = { ...newDeal(order, roundLeader(order, round), normalizeRules(room.rules)), turnSince: Date.now() };
   await saveRoom(room, { status: "playing", round, deal, result: null });
   const { error } = await db().from(T.players).update({ kick_requested_at: null }).eq("room_id", room.id);
   if (error) throw error;

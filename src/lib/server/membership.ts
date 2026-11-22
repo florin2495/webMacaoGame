@@ -55,6 +55,7 @@ async function tryRemove(room: RoomRow, player: PlayerRow, reason: string): Prom
   let finishedDeal: { deal: NonNullable<RoomRow["deal"]>; result: RoundResult } | null = null;
   if (room.status === "playing" && room.deal?.order.includes(player.id)) {
     const next = removeFromDeal(room.deal, player.id);
+    if (next.turn !== room.deal.turn) next.turnSince = Date.now();
     if (next.order.length < MIN_PLAYERS) {
       const result: RoundResult = { aborted: { nickname: player.nickname }, standings: standings(next), winner: null };
       update.status = "finished";

@@ -55,6 +55,8 @@ export interface Rules {
   macaoPenalty: number;
   /** The round ends when the first player runs out of cards, or goes on until only one is left with cards. */
   roundEnd: RoundEnd;
+  /** Seconds per turn (0 = no limit). When it runs out the turn is played automatically. */
+  turnSeconds: number;
 }
 
 export const DEFAULT_RULES: Rules = {
@@ -82,11 +84,13 @@ export const DEFAULT_RULES: Rules = {
   macao: true,
   macaoPenalty: 5,
   roundEnd: "first",
+  turnSeconds: 60,
 };
 
 export const HAND_SIZES = [4, 5, 6, 7] as const;
 export const JOKER_DRAWS = [3, 4, 5, 6, 7, 8, 9, 10] as const;
 export const MACAO_PENALTIES = [1, 2, 3, 4, 5] as const;
+export const TURN_SECONDS = [0, 30, 45, 60, 90, 120] as const;
 
 const pick = <T>(value: unknown, allowed: readonly T[], fallback: T): T =>
   allowed.includes(value as T) ? (value as T) : fallback;
@@ -124,6 +128,7 @@ export function normalizeRules(input: unknown, fallback: Rules = DEFAULT_RULES):
     macao: bool(o.macao, d.macao),
     macaoPenalty: pick(o.macaoPenalty, MACAO_PENALTIES, d.macaoPenalty as (typeof MACAO_PENALTIES)[number]),
     roundEnd: pick<RoundEnd>(o.roundEnd, ["first", "last"], d.roundEnd),
+    turnSeconds: pick(o.turnSeconds, TURN_SECONDS, d.turnSeconds as (typeof TURN_SECONDS)[number]),
   };
   if (rules.skipRank !== "none" && rules.skipRank === rules.stopRank) rules.skipRank = "none";
   // "On anything" includes answering a penalty with a stop card of any color.
@@ -205,6 +210,11 @@ export function describeRules(r: Rules): string[] {
   if (!r.finishOnSpecial) lines.push("Nu poți termina cu o carte specială.");
   lines.push(r.playAfterDraw ? "Tragi o carte; dacă se potrivește, o poți pune imediat." : "Dacă tragi, ai pierdut tura.");
   if (r.macao) lines.push(`Când rămâi cu o carte zici „Macao”. Cine te prinde înainte îți dă ${r.macaoPenalty} cărți.`);
+  lines.push(
+    r.turnSeconds > 0
+      ? `Ai ${r.turnSeconds} de secunde pe tură; dacă trec, se joacă automat pentru tine (iei / stai / prima carte bună / tragi).`
+      : "Fără limită de timp pe tură.",
+  );
   lines.push(r.roundEnd === "first" ? "Runda se termină când primul jucător rămâne fără cărți." : "Runda continuă până rămâne un singur jucător cu cărți.");
   return lines;
 }

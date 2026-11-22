@@ -1,7 +1,7 @@
 "use client";
 
 import { type ReactNode, useState } from "react";
-import { HAND_SIZES, JOKER_DRAWS, MACAO_PENALTIES, type Rules, type StopMode, stopMode, stopModeRules, updateRules } from "@/lib/rules";
+import { HAND_SIZES, JOKER_DRAWS, MACAO_PENALTIES, TURN_SECONDS, type Rules, type StopMode, stopMode, stopModeRules, updateRules } from "@/lib/rules";
 import { Button, Card, Toggle } from "./ui";
 
 type Option<T> = { value: T; label: string };
@@ -253,7 +253,7 @@ export function RulesPanel({
             )}
           </Group>
 
-          <Group title="Joc și Macao" summary={`${rules.macao ? `Macao +${rules.macaoPenalty}` : "fără Macao"}, ${rules.roundEnd === "first" ? "până iese primul" : "până rămâne unul"}`}>
+          <Group title="Joc și Macao" summary={`${rules.macao ? `Macao +${rules.macaoPenalty}` : "fără Macao"}, ${rules.roundEnd === "first" ? "până iese primul" : "până rămâne unul"}, ${rules.turnSeconds ? `${rules.turnSeconds} s/tură` : "fără timp"}`}>
             <Toggle label="Mai multe cărți la fel deodată" hint="Ex. doi de 9; doi de 2 = iei 4. Cu ultimele două la fel termini fără „Macao”." checked={rules.multiPlay} disabled={off} onChange={set("multiPlay")} />
             <Toggle label="Poți pune imediat cartea trasă" hint="Dacă se potrivește. Altfel tura trece." checked={rules.playAfterDraw} disabled={off} onChange={set("playAfterDraw")} />
             <Toggle label="Poți termina cu o carte specială" hint="Speciale: 2, 3, joker, stop, stai o tură, schimbă culoarea." checked={rules.finishOnSpecial} disabled={off} onChange={set("finishOnSpecial")} />
@@ -261,6 +261,15 @@ export function RulesPanel({
             {rules.macao && (
               <Choice testId="rule-macaoPenalty" label="Prins fără „Macao”: iei" value={rules.macaoPenalty} options={nums(MACAO_PENALTIES, cards)} disabled={off} onChange={set("macaoPenalty")} />
             )}
+            <Choice
+              testId="rule-turnSeconds"
+              label="Timp pe tură"
+              hint="Când trece, se joacă automat pentru cel la rând (ia / stă / prima carte bună / trage)."
+              value={rules.turnSeconds}
+              options={TURN_SECONDS.map((n) => ({ value: n, label: n === 0 ? "fără limită" : `${n} de secunde` }))}
+              disabled={off}
+              onChange={set("turnSeconds")}
+            />
             <Choice<Rules["roundEnd"]>
               testId="rule-roundEnd"
               label="Sfârșitul rundei"

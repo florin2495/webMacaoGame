@@ -58,6 +58,10 @@ export interface GameView {
   canPass: boolean;
   canTake: boolean;
   canSit: boolean;
+  /** Epoch ms (server clock) when the turn timer runs out; null = no timer. */
+  turnDeadline: number | null;
+  /** Server clock when this view was built (to correct the client's clock for the countdown). */
+  serverNow: number;
 }
 
 export interface RoomState {
