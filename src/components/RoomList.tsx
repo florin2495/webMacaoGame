@@ -121,7 +121,7 @@ export function RoomList({
                 <span className="shrink-0 text-right">
                   <span className="block font-mono text-sm font-bold tracking-widest">{r.code}</span>
                   <span className="block text-[10px] font-semibold uppercase text-indigo-600 dark:text-indigo-400">
-                    {mine ? "Reintră" : canSit ? "Join" : "Privește"}
+                    {mine ? "Reintră" : canSit ? "Intră" : "Privește"}
                   </span>
                 </span>
               </button>

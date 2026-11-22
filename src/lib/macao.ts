@@ -314,7 +314,7 @@ export function playProblem(deal: Deal, playerId: string, cards: Card[]): string
   if (deal.drawn && (cards.length > 1 || cards[0] !== deal.drawn)) return "Poți pune doar cartea trasă, sau treci.";
   if (!fits(deal, cards[0])) return notFitMessage(deal);
   if (!deal.rules.finishOnSpecial && cards.length === hand.length && kindOf(cards[0], deal.rules) !== "plain") {
-    return "Nu poți termina cu o carte specială.";
+    return "Nu poți termina cu cărți speciale.";
   }
   return null;
 }
@@ -472,7 +472,7 @@ export function sitOutTurn(input: Deal, playerId: string): Deal {
 export function sayMacao(input: Deal, playerId: string): Deal {
   if (!input.rules.macao) throw new RuleError("Camera se joacă fără „Macao”.");
   if (isDealOver(input) || !activePlayers(input).includes(playerId)) throw new RuleError("Nu mai joci în runda asta.");
-  if ((input.hands[playerId]?.length ?? 0) > 2) throw new RuleError("Zici „Macao” când rămâi cu o carte.");
+  if ((input.hands[playerId]?.length ?? 0) > 2) throw new RuleError("Zici „Macao” când mai ai una sau două cărți.");
   if (input.macao[playerId]) return input;
   const deal = clone(input);
   deal.macao[playerId] = true;

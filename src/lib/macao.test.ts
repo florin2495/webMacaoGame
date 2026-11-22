@@ -259,7 +259,7 @@ describe("several cards at once", () => {
 
   it("cannot finish with a special card when the rule forbids it", () => {
     const d = make({ a: ["2H"], b: ["KC"] }, ["5H"], { finishOnSpecial: false });
-    expect(playProblem(d, "a", ["2H"])).toMatch("carte specială");
+    expect(playProblem(d, "a", ["2H"])).toMatch("cărți speciale");
     expect(legalCards(d, "a")).toEqual([]);
   });
 });

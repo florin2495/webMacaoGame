@@ -25,6 +25,7 @@ import { useAction } from "./useAction";
 
 const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
 const cardsWord = (n: number) => plural(n, "carte", "cărți");
+const turnsWord = (n: number) => (n === 1 ? "o tură" : `${n} ture`);
 
 /** Hand order on screen: by suit (♠ ♥ ♣ ♦ alternating colors), then rank; jokers last. */
 const SUIT_ORDER: Suit[] = ["S", "H", "C", "D"];
@@ -51,6 +52,9 @@ export function Game({
   const [selected, setSelected] = useState<CardT[]>([]);
   const [askSuit, setAskSuit] = useState<CardT[] | null>(null);
   const [moveSeen, setMoveSeen] = useState(-1);
+  // Cards that just came into my hand (drawn / taken), highlighted until the next move.
+  const [lastHand, setLastHand] = useState<CardT[]>([]);
+  const [fresh, setFresh] = useState<CardT[]>([]);
 
   const byId = new Map([...players, ...state.spectators].map((p) => [p.id, p]));
   const nick = (id: string | null | undefined) => (id ? (byId.get(id)?.nickname ?? "cineva") : "cineva");
@@ -58,6 +62,9 @@ export function Game({
   // A new move on the server clears any half-made selection.
   if (game && game.moves !== moveSeen) {
     setMoveSeen(game.moves);
+    const added = moveSeen >= 0 ? game.hand.filter((c) => !lastHand.includes(c)) : [];
+    setFresh(added);
+    setLastHand(game.hand);
     if (selected.length > 0) setSelected([]);
     if (askSuit) setAskSuit(null);
   }
@@ -78,6 +85,7 @@ export function Game({
   const stillPlaying = inDeal && !game.finished.includes(me.id) && !finished;
   const hand = sortHand(game.hand);
   const selRank = selected.length > 0 ? rankOf(selected[0]) : null;
+  const finishBlocked = !r.finishOnSpecial && selected.length > 0 && selected.length === game.hand.length && kindOf(selected[0], r) !== "plain";
 
   /** A card can be tapped: legal on its own, or (while selecting) the same rank as the selection. */
   const tappable = (c: CardT) => {
@@ -164,6 +172,38 @@ export function Game({
 
         <Table game={game} top={top} canDraw={game.canDraw && busy === null} onDraw={() => void run("draw")} />
 
+        {/* Deliberately low-key: nobody should be able to tell from the screen who has something to say. */}
+        {r.macao && inDeal && !finished && (
+          /* Right under the table: rows that appear below (buttons, errors) never move it under a finger. */
+          <div className="flex items-center justify-between gap-2">
+            {stillPlaying ? (
+              <button
+                type="button"
+                disabled={busy !== null}
+                onClick={() => void run("macao")}
+                className="min-h-9 rounded-md border border-zinc-300 px-3 text-xs text-zinc-500 hover:text-zinc-700 disabled:opacity-40 dark:border-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-200"
+                data-testid="macao"
+              >
+                Macao
+              </button>
+            ) : (
+              <span />
+            )}
+            <span className="min-w-0 truncate text-center text-[11px] font-semibold text-amber-600" data-testid="my-status">
+              {[game.macao[me.id] ? "ai zis Macao" : "", (game.sitOut[me.id] ?? 0) > 0 ? `mai stai ${turnsWord(game.sitOut[me.id])}` : ""].filter(Boolean).join(" · ")}
+            </span>
+            <button
+              type="button"
+              disabled={busy !== null}
+              onClick={() => void run("catch")}
+              className="min-h-9 rounded-md border border-zinc-300 px-3 text-xs text-zinc-500 hover:text-zinc-700 disabled:opacity-40 dark:border-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-200"
+              data-testid="catch"
+            >
+              Contra-Macao
+            </button>
+          </div>
+        )}
+
         <p
           className={`text-center text-sm font-semibold ${myTurn ? "text-indigo-600 dark:text-indigo-400" : "text-zinc-600 dark:text-zinc-300"}`}
           role="status"
@@ -211,7 +251,7 @@ export function Game({
                     disabled={!can && !isSel}
                     className={`rounded-lg transition-transform ${can ? "enabled:hover:-translate-y-1" : myTurn ? "opacity-40" : ""} ${
                       isSel ? "-translate-y-2 ring-4 ring-indigo-500" : ""
-                    } ${game.drawn === c ? "ring-2 ring-amber-400" : ""}`}
+                    } ${game.drawn === c || fresh.includes(c) ? "ring-2 ring-amber-400" : ""}`}
                     aria-label={`Joacă ${cardLabel(c)}`}
                     data-card={c}
                     data-legal={game.legal.includes(c)}
@@ -223,12 +263,13 @@ export function Game({
             </div>
             {selected.length > 0 && !askSuit && (
               <div className="mt-2 grid grid-cols-2 gap-2">
-                <Button disabled={busy !== null || !selected.some((c) => game.legal.includes(c))} onClick={() => playOrAskSuit(selected)} data-testid="play-selected">
+                <Button disabled={busy !== null || finishBlocked || !selected.some((c) => game.legal.includes(c))} onClick={() => playOrAskSuit(selected)} data-testid="play-selected">
                   Pune {selected.length === 1 ? cardLabel(selected[0]) : `${selected.length} cărți`}
                 </Button>
                 <Button variant="secondary" onClick={() => setSelected([])}>
                   Renunț
                 </Button>
+                {finishBlocked && <p className="col-span-2 text-center text-xs text-rose-600">Nu poți termina cu cărți speciale.</p>}
               </div>
             )}
             {askSuit && (
@@ -262,33 +303,6 @@ export function Game({
 
         <ErrorText>{error}</ErrorText>
 
-        {/* Deliberately low-key: nobody should be able to tell from the screen who has something to say. */}
-        {r.macao && inDeal && !finished && (
-          <div className="flex items-center justify-between gap-2">
-            {stillPlaying ? (
-              <button
-                type="button"
-                disabled={busy !== null}
-                onClick={() => void run("macao")}
-                className="min-h-9 rounded-md border border-zinc-300 px-3 text-xs text-zinc-500 hover:text-zinc-700 disabled:opacity-40 dark:border-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-200"
-                data-testid="macao"
-              >
-                Macao
-              </button>
-            ) : (
-              <span />
-            )}
-            <button
-              type="button"
-              disabled={busy !== null}
-              onClick={() => void run("catch")}
-              className="min-h-9 rounded-md border border-zinc-300 px-3 text-xs text-zinc-500 hover:text-zinc-700 disabled:opacity-40 dark:border-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-200"
-              data-testid="catch"
-            >
-              Contra-Macao
-            </button>
-          </div>
-        )}
       </Card>
 
       <GameLog log={game.log} nick={nick} />
@@ -301,12 +315,12 @@ function statusText(game: GameView, meId: string, nick: (id: string | null) => s
   const suit = game.suit ? ` (se cere ${SUIT_SYMBOL[game.suit]})` : "";
   if (game.turn === meId) {
     if (game.pendingDraw > 0) return `Ai de luat ${cardsWord(game.pendingDraw)}: dă mai departe, oprește, sau ia-le.`;
-    if (game.pendingSkip > 0) return game.legal.length > 0 ? "Stai o tură: dă mai departe, sau stai." : "Stai o tură.";
+    if (game.pendingSkip > 0) return game.legal.length > 0 ? `Stai ${turnsWord(game.pendingSkip)}: dă mai departe, sau stai.` : `Stai ${turnsWord(game.pendingSkip)}.`;
     if (game.drawn) return "Ai tras o carte care se potrivește: o pui sau treci.";
     return game.legal.length > 0 ? `E rândul tău${suit}.` : `E rândul tău${suit}: n-ai ce pune, trage o carte.`;
   }
   if (game.pendingDraw > 0) return `${nick(game.turn)} are de luat ${cardsWord(game.pendingDraw)}…`;
-  if (game.pendingSkip > 0) return `${nick(game.turn)} stă o tură, dacă nu dă mai departe…`;
+  if (game.pendingSkip > 0) return `${nick(game.turn)} stă ${turnsWord(game.pendingSkip)}, dacă nu dă mai departe…`;
   return `Este rândul lui ${nick(game.turn)}${suit}.`;
 }
 
@@ -490,7 +504,7 @@ export function OrderControls({
   const ids = players.map((p) => p.id);
   const startIdx = players.length > 0 ? (((nextRound - 1) % players.length) + players.length) % players.length : 0;
   return (
-    <ol className="mx-auto flex w-full max-w-xs flex-col gap-1 text-left text-sm">
+    <ol className="flex w-full flex-col gap-1 text-left text-sm">
       {players.map((p, i) => {
         const up = movedOrder(ids, p.id, -1);
         const down = movedOrder(ids, p.id, 1);
@@ -554,9 +568,16 @@ function FinishedPanel({
           </li>
         ))}
       </ol>
-      <p className="text-xs text-zinc-500">
-        Runde câștigate / scor (cărți rămase, adunate): {players.map((p) => `${p.nickname} ${p.wins} / ${p.score}`).join(" · ")}
-      </p>
+      <div className="text-left text-xs text-zinc-500">
+        <p className="font-semibold">În camera asta (scor = cărți rămase adunate, mai puțin e mai bine):</p>
+        <ul>
+          {players.map((p) => (
+            <li key={p.id}>
+              {p.nickname}: {plural(p.wins, "rundă câștigată", "runde câștigate")}, scor {p.score}
+            </li>
+          ))}
+        </ul>
+      </div>
       {isHost ? (
         <>
           <div className="flex flex-col gap-1">

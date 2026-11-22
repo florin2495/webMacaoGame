@@ -256,7 +256,7 @@ export function RulesPanel({
           <Group title="Joc și Macao" summary={`${rules.macao ? `Macao +${rules.macaoPenalty}` : "fără Macao"}, ${rules.roundEnd === "first" ? "până iese primul" : "până rămâne unul"}`}>
             <Toggle label="Mai multe cărți la fel deodată" hint="Ex. doi de 9; doi de 2 = iei 4. Cu ultimele două la fel termini fără „Macao”." checked={rules.multiPlay} disabled={off} onChange={set("multiPlay")} />
             <Toggle label="Poți pune imediat cartea trasă" hint="Dacă se potrivește. Altfel tura trece." checked={rules.playAfterDraw} disabled={off} onChange={set("playAfterDraw")} />
-            <Toggle label="Poți termina cu o carte specială" checked={rules.finishOnSpecial} disabled={off} onChange={set("finishOnSpecial")} />
+            <Toggle label="Poți termina cu o carte specială" hint="Speciale: 2, 3, joker, stop, stai o tură, schimbă culoarea." checked={rules.finishOnSpecial} disabled={off} onChange={set("finishOnSpecial")} />
             <Toggle label="„Macao” și contra-Macao" hint="Cine rămâne cu o carte fără să zică „Macao” poate fi prins." checked={rules.macao} disabled={off} onChange={set("macao")} />
             {rules.macao && (
               <Choice testId="rule-macaoPenalty" label="Prins fără „Macao”: iei" value={rules.macaoPenalty} options={nums(MACAO_PENALTIES, cards)} disabled={off} onChange={set("macaoPenalty")} />
