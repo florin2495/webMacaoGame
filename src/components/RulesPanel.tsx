@@ -47,14 +47,24 @@ function Choice<T extends string | number>({
   );
 }
 
-function Group({ title, children }: { title: string; children: ReactNode }) {
+/** One collapsible section of the rules menu; the closed row shows the current choice. */
+function Group({ title, summary, children }: { title: string; summary: string; children: ReactNode }) {
   return (
-    <fieldset className="flex flex-col gap-2 border-t border-zinc-200 pt-3 dark:border-zinc-800">
-      <legend className="pr-2 text-xs font-bold uppercase tracking-wide text-zinc-500">{title}</legend>
-      {children}
-    </fieldset>
+    <details className="group/sec border-t border-zinc-200 dark:border-zinc-800">
+      <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-2 py-1">
+        <span className="flex shrink-0 items-center gap-2 text-sm font-semibold">
+          <span className="text-[10px] text-zinc-400 transition-transform group-open/sec:rotate-90">▶</span>
+          {title}
+        </span>
+        <span className="min-w-0 truncate text-right text-xs text-zinc-500">{summary}</span>
+      </summary>
+      <div className="flex flex-col gap-2 pb-3 pl-5">{children}</div>
+    </details>
   );
 }
+
+const rankName = (r: string) => (r === "A" ? "As" : r);
+const onOff = (v: boolean) => (v ? "da" : "nu");
 
 const nums = (list: readonly number[], unit: (n: number) => string): Option<number>[] => list.map((n) => ({ value: n, label: unit(n) }));
 const cards = (n: number) => `${n} ${n === 1 ? "carte" : "cărți"}`;
@@ -79,23 +89,25 @@ export function RulesPanel({
 
   return (
     <Card className="py-2" data-testid="rules-panel">
-      <details className="group" open={editable}>
-        <summary className="flex min-h-10 cursor-pointer list-none items-center justify-between gap-2">
-          <span className="flex items-center gap-2 font-bold">
-            <span className="text-xs transition-transform group-open:rotate-90">▶</span>
+      <details className="group/rules">
+        <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-2">
+          <span className="flex shrink-0 items-center gap-2 font-bold">
+            <span className="text-xs transition-transform group-open/rules:rotate-90">▶</span>
             Regulile camerei
           </span>
-          <span className="text-xs text-zinc-500">{editable ? "le alegi tu" : "le alege host-ul"}</span>
+          <span className="min-w-0 truncate text-right text-xs text-zinc-500">
+            {editable ? "apasă ca să le schimbi" : "le alege host-ul"}
+          </span>
         </summary>
-        <div className="flex flex-col gap-3 pb-2 pt-1">
-          {editable && <p className="text-xs text-zinc-500">Orice schimbare resetează „gata” la toți.</p>}
+        <div className="flex flex-col pb-1 pt-1">
+          {editable && <p className="pb-2 text-xs text-zinc-500">Orice schimbare resetează „gata” la toți.</p>}
 
-          <Group title="Împărțire">
+          <Group title="Împărțire" summary={`${cards(rules.handSize)}, ${rules.jokers ? "cu jokeri" : "fără jokeri"}`}>
             <Choice testId="rule-handSize" label="Cărți de jucător" value={rules.handSize} options={nums(HAND_SIZES, cards)} disabled={off} onChange={set("handSize")} />
             <Toggle label="Cu jokeri (negru și colorat)" checked={rules.jokers} disabled={off} onChange={set("jokers")} />
           </Group>
 
-          <Group title="2 și 3 (iei cărți)">
+          <Group title="2 și 3" summary={`${rules.twoThreeOn === "any" ? "peste orice" : rules.twoThreeOn === "color" ? "pe culoare" : "pe suită"}, 2↔3 ${onOff(rules.mixTwoThree)}`}>
             <Choice<Rules["twoThreeOn"]>
               testId="rule-twoThreeOn"
               label="2 și 3 se pun"
@@ -112,7 +124,7 @@ export function RulesPanel({
           </Group>
 
           {rules.jokers && (
-            <Group title="Jokeri">
+            <Group title="Jokeri" summary={`+${rules.jokerBlackDraw} / +${rules.jokerRedDraw}, ${rules.jokerOn === "any" ? "peste orice" : "pe culoare"}`}>
               <div className="grid grid-cols-2 gap-2">
                 <Choice testId="rule-jokerBlackDraw" label="Joker negru: iei" value={rules.jokerBlackDraw} options={nums(JOKER_DRAWS, cards)} disabled={off} onChange={set("jokerBlackDraw")} />
                 <Choice testId="rule-jokerRedDraw" label="Joker colorat: iei" value={rules.jokerRedDraw} options={nums(JOKER_DRAWS, cards)} disabled={off} onChange={set("jokerRedDraw")} />
@@ -133,7 +145,7 @@ export function RulesPanel({
             </Group>
           )}
 
-          <Group title="Stop (anulează cărțile de luat)">
+          <Group title="Stop" summary={rules.stopRank === "none" ? "fără" : `${rankName(rules.stopRank)}, ${rules.stopAnySuit ? "orice suită" : "aceeași suită"}`}>
             <Choice<Rules["stopRank"]>
               testId="rule-stopRank"
               label="Cartea de stop"
@@ -154,7 +166,7 @@ export function RulesPanel({
             )}
           </Group>
 
-          <Group title="Stai o tură">
+          <Group title="Stai o tură" summary={rules.skipRank === "none" ? "fără" : `${rankName(rules.skipRank)}${rules.skipStack ? ", se adună" : ""}`}>
             <Choice<Rules["skipRank"]>
               testId="rule-skipRank"
               label="Cartea de stat o tură"
@@ -178,7 +190,7 @@ export function RulesPanel({
             )}
           </Group>
 
-          <Group title="Schimbă suita">
+          <Group title="Schimbă suita" summary={rules.changeRank === "none" ? "fără" : `${rankName(rules.changeRank)}${rules.changeOnAnything ? ", peste orice" : ""}`}>
             <Choice<Rules["changeRank"]>
               testId="rule-changeRank"
               label="Cartea care schimbă suita"
@@ -196,7 +208,7 @@ export function RulesPanel({
             )}
           </Group>
 
-          <Group title="Joc">
+          <Group title="Joc și Macao" summary={`${rules.macao ? `Macao +${rules.macaoPenalty}` : "fără Macao"}, ${rules.roundEnd === "first" ? "până iese primul" : "până rămâne unul"}`}>
             <Toggle label="Mai multe cărți la fel deodată" hint="Ex. doi de 9; doi de 2 = iei 4. Cu ultimele două la fel termini fără „Macao”." checked={rules.multiPlay} disabled={off} onChange={set("multiPlay")} />
             <Toggle label="Poți pune imediat cartea trasă" hint="Dacă se potrivește. Altfel tura trece." checked={rules.playAfterDraw} disabled={off} onChange={set("playAfterDraw")} />
             <Toggle label="Poți termina cu o carte specială" checked={rules.finishOnSpecial} disabled={off} onChange={set("finishOnSpecial")} />
