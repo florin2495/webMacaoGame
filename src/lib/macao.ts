@@ -378,18 +378,12 @@ function advance(deal: Deal, from: string) {
       pushLog(deal, { type: "sat", playerId: id });
       continue;
     }
+    // When everybody else sits out, the turn comes back to `from` together with what they just set up (cards to
+    // draw, a turn to sit out): that is the house rule (user's decision, 2026-11-23), not a bug.
     deal.turn = id;
-    // Everybody else sat out and the turn came back: what this player just set up (cards to draw, a turn to sit
-    // out) would hit them, so it is dropped.
-    if (id === from) {
-      deal.pendingDraw = 0;
-      deal.pendingSkip = 0;
-    }
     return;
   }
   deal.turn = from;
-  deal.pendingDraw = 0;
-  deal.pendingSkip = 0;
 }
 
 /** Puts `cards` (same rank) down for `playerId`. `suit` = the chosen suit for a change-suit card. Input not mutated. */
