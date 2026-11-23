@@ -17,6 +17,9 @@ finish on a special card, Macao + penalty, round end (first out / until one is l
 - "Macao" and "Contra-Macao" are two small, low-key buttons (user: they must not catch the eye). Macao can be said
   with at most two cards; Contra-Macao catches everyone left with one card who did not say it.
 - Putting the last 2, 3 or 4 equal cards down at once finishes without saying Macao (user's requirement).
+- **Not a bug, do not "fix":** when every other player sits out (e.g. 2 players), the turn comes back to the player
+  who just played, together with the cards to draw / turn to sit out they set up - they take their own 2 / sit out
+  their own A. That is how Macao is played (user, 2026-11-23). Pinned by a unit test.
 - A player who leaves or is kicked during a round (host kick: pending 10 s, "Ignoră") is removed from the deal and the
   round goes on without them (cards under the stock, their penalty dropped, turn passes on); below 2 players it is
   cancelled (user's requirement). An empty stock is refilled by shuffling every played card except the top one.

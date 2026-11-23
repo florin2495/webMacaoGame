@@ -379,7 +379,7 @@ function advance(deal: Deal, from: string) {
       continue;
     }
     // When everybody else sits out, the turn comes back to `from` together with what they just set up (cards to
-    // draw, a turn to sit out): that is the house rule (user's decision, 2026-11-23), not a bug.
+    // draw, a turn to sit out): that is how Macao is played (user, 2026-11-23), not a bug.
     deal.turn = id;
     return;
   }
